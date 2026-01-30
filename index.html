@@ -9,157 +9,210 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <style>
-        body { font-family: 'Noto Sans TC', 'Noto Sans JP', sans-serif; background-color: #FDFCFB; color: #4A4A4A; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Noto Sans TC', 'Noto Sans JP', sans-serif; background-color: #FDFCFB; color: #4A4A4A; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
         .muji-shadow { box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
-        .loading-overlay { background: rgba(253, 252, 251, 0.85); backdrop-filter: blur(4px); }
-        .btn-split { border: 1px solid #E5E5E5; padding: 4px 12px; border-radius: 20px; font-size: 10px; }
-        .active-split { background: #4A4A4A; color: white; border-color: #4A4A4A; }
+        .loading-overlay { background: rgba(253, 252, 251, 0.9); backdrop-filter: blur(8px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        /* 底部導航專用樣式 */
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 0; transition: all 0.3s; }
+        .nav-item.active { color: #4A4A4A; }
+        .nav-item.inactive { color: #D1D1D1; }
+        .add-btn-container { position: relative; top: -15px; }
+        .add-btn { background: #4A4A4A; color: white; width: 56px; height: 56px; border-radius: 50%; display: flex; items-center: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
-    <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col relative">
+    <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col relative overflow-hidden">
         
-        <!-- 全螢幕讀取鎖定 (UX: 鎖定點擊與明顯提示) -->
+        <!-- [UI組件] 全螢幕讀取鎖定 -->
         <div v-if="loading" class="fixed inset-0 z-[100] loading-overlay flex flex-col items-center justify-center">
             <div class="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin mb-4"></div>
-            <p class="text-xs tracking-widest text-gray-500 font-light">正在同步至 Google Sheets...</p>
+            <p class="text-xs tracking-widest text-gray-500 font-light">同步數據至 Google Sheets...</p>
         </div>
 
-        <!-- 成功預覽視窗 (UX: 紀錄後確認) -->
-        <div v-if="lastSaved" class="fixed inset-0 z-[90] flex items-center justify-center p-6 bg-black/5">
-            <div class="bg-white w-full rounded-3xl p-8 muji-shadow text-center space-y-6 animate-in fade-in zoom-in duration-300">
-                <span class="material-symbols-rounded text-5xl text-gray-300">task_alt</span>
+        <!-- [UI組件] 成功紀錄預覽 -->
+        <div v-if="lastSaved" class="fixed inset-0 z-[90] flex items-center justify-center p-8 bg-black/10 backdrop-blur-sm">
+            <div class="bg-white w-full rounded-3xl p-8 muji-shadow text-center space-y-6">
+                <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto">
+                    <span class="material-symbols-rounded text-3xl text-gray-400">check</span>
+                </div>
                 <div>
-                    <p class="text-xs text-gray-400">紀錄成功</p>
-                    <h3 class="text-2xl font-light mt-1">¥ {{ formatNumber(lastSaved.amountJPY) }}</h3>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-widest">Saved Successfully</p>
+                    <h3 class="text-3xl font-light mt-2">{{ lastSaved.currency }} {{ formatNumber(lastSaved.amount) }}</h3>
                     <p class="text-sm text-gray-400 mt-1">{{ lastSaved.name }}</p>
                 </div>
-                <button @click="lastSaved = null" class="w-full py-3 bg-gray-100 rounded-xl text-sm font-medium">關閉</button>
+                <button @click="lastSaved = null" class="w-full py-4 bg-gray-100 rounded-2xl text-xs font-medium tracking-widest uppercase">Dismiss</button>
             </div>
         </div>
 
-        <header class="p-6 pb-2">
-            <h1 class="text-xl font-light tracking-widest text-gray-400 uppercase">Nichi-Nichi</h1>
+        <!-- [區塊] 頁面標題 -->
+        <header class="p-6 pb-2 shrink-0">
+            <h1 class="text-lg font-light tracking-[0.3em] text-gray-400 uppercase">Nichi-Nichi</h1>
         </header>
 
-        <main class="flex-grow p-4 mb-24 overflow-y-auto">
+        <!-- [區塊] 主要內容區 -->
+        <main class="flex-grow overflow-y-auto px-4 pb-32 no-scrollbar">
             
-            <!-- 分頁: 總覽 -->
-            <div v-if="currentTab === 'overview'" class="space-y-6">
-                <div class="bg-white p-8 rounded-3xl muji-shadow border border-gray-50">
-                    <p class="text-xs text-gray-400 mb-2">當月累計支出</p>
-                    <h2 class="text-4xl font-light text-gray-700">¥ {{ formatNumber(monthlyTotal) }}</h2>
-                    <p class="text-xs text-gray-300 mt-2 italic">≈ NT$ {{ formatNumber(monthlyTotal * fxRate) }}</p>
+            <!-- 分頁 1: 總覽 (Overview) -->
+            <div v-if="currentTab === 'overview'" class="space-y-6 py-4">
+                <div class="bg-white p-8 rounded-[2rem] muji-shadow border border-gray-50">
+                    <p class="text-[10px] text-gray-400 uppercase tracking-widest mb-2">Monthly Spending</p>
+                    <h2 class="text-4xl font-light">¥ {{ formatNumber(monthlyTotal) }}</h2>
+                    <p class="text-[10px] text-gray-300 mt-2">約 NT$ {{ formatNumber(monthlyTotal * fxRate) }}</p>
                 </div>
-                <div class="bg-white p-6 rounded-2xl muji-shadow flex justify-between items-center">
-                    <span class="text-xs text-gray-400">目前待收代墊款</span>
-                    <span class="text-lg font-light">¥ {{ formatNumber(debtTotal) }}</span>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white p-6 rounded-2xl muji-shadow">
+                        <p class="text-[10px] text-gray-400 mb-1">待收代墊</p>
+                        <p class="text-xl font-light">¥ {{ formatNumber(debtTotal) }}</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl muji-shadow border-l-2 border-gray-200">
+                        <p class="text-[10px] text-gray-400 mb-1">留學總計</p>
+                        <p class="text-xl font-light">¥ {{ formatNumber(allTimeTotal) }}</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- 分頁: 新增 -->
-            <div v-if="currentTab === 'add'" class="bg-white p-6 rounded-3xl muji-shadow space-y-6">
-                <!-- 收支切換 -->
-                <div class="flex bg-gray-100 rounded-xl p-1" @click="form.type = (form.type === '支出' ? '收入' : '支出')">
-                    <div :class="{'translate-x-full': form.type === '收入'}" class="w-1/2 bg-white rounded-lg shadow-sm py-2 text-center text-sm transition-transform duration-300 ease-out">
-                        {{ form.type }}
+            <!-- 分頁 2: 明細 (History) -->
+            <div v-if="currentTab === 'history'" class="space-y-3 py-4">
+                <div v-if="transactions.length === 0" class="text-center py-20 text-gray-300 text-xs">尚無紀錄資料</div>
+                <div v-for="item in transactions" :key="item.id" class="bg-white p-4 rounded-2xl muji-shadow flex justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <span class="material-symbols-rounded text-gray-300">{{ getIcon(item.categoryId) }}</span>
+                        <div>
+                            <p class="text-sm font-medium">{{ item.name }}</p>
+                            <p class="text-[10px] text-gray-300">{{ item.spendDate }} · {{ item.paymentMethod }}</p>
+                        </div>
                     </div>
-                    <div class="absolute inset-0 flex">
-                        <div class="flex-1 text-center py-2 text-sm text-gray-400 pointer-events-none">支出</div>
-                        <div class="flex-1 text-center py-2 text-sm text-gray-400 pointer-events-none">收入</div>
+                    <div class="text-right">
+                        <p class="text-sm">¥ {{ formatNumber(item.amountJPY) }}</p>
                     </div>
                 </div>
+            </div>
 
-                <!-- 金額與幣別切換 (UX: 直接點擊切換) -->
-                <div class="text-center py-4">
-                    <div class="inline-flex items-baseline space-x-2">
-                        <span @click="toggleCurrency" class="text-xl font-medium text-gray-400 cursor-pointer select-none">{{ form.currency }}</span>
-                        <input type="number" v-model="form.amount" class="text-5xl font-light w-48 text-center bg-transparent outline-none border-none" placeholder="0" autofocus>
-                    </div>
-                    <p class="text-[10px] text-gray-300 mt-2">點擊單位切換 JPY / TWD</p>
-                </div>
-
-                <div class="space-y-4">
-                    <!-- 消費日期 -->
-                    <div class="flex items-center justify-between border-b border-gray-50 py-2">
-                        <span class="text-xs text-gray-400">日期</span>
-                        <input type="date" v-model="form.spendDate" class="text-sm bg-transparent !border-none text-right">
+            <!-- 分頁 3: 新增 (Add) -->
+            <div v-if="currentTab === 'add'" class="space-y-6 py-4 animate-in fade-in duration-500">
+                <div class="bg-white p-6 rounded-[2rem] muji-shadow space-y-6">
+                    <!-- 收支切換 (修正後的按鈕) -->
+                    <div class="flex bg-gray-100 rounded-xl p-1 relative">
+                        <button @click.stop="form.type = '支出'" :class="form.type === '支出' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-2 text-xs rounded-lg transition-all z-10">支出</button>
+                        <button @click.stop="form.type = '收入'" :class="form.type === '收入' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-2 text-xs rounded-lg transition-all z-10">收入</button>
                     </div>
 
-                    <!-- 分類選擇 -->
-                    <div class="grid grid-cols-4 gap-4 py-2">
-                        <div v-for="cat in categories" :key="cat.id" @click="form.categoryId = cat.id"
-                             :class="{'bg-[#4A4A4A] text-white': form.categoryId === cat.id, 'text-gray-400 bg-gray-50': form.categoryId !== cat.id}"
-                             class="flex flex-col items-center p-3 rounded-2xl transition-all duration-300">
-                            <span class="material-symbols-rounded">{{ cat.icon }}</span>
-                            <span class="text-[9px] mt-1">{{ cat.name }}</span>
+                    <!-- 金額輸入與幣別 -->
+                    <div class="text-center py-6 border-b border-gray-50">
+                        <div class="flex items-center justify-center space-x-3">
+                            <span @click.stop="toggleCurrency" class="text-sm font-medium text-gray-300 border border-gray-200 px-2 py-1 rounded cursor-pointer active:bg-gray-100">{{ form.currency }}</span>
+                            <input type="number" v-model="form.amount" class="text-5xl font-light w-48 text-center bg-transparent outline-none" placeholder="0" inputmode="decimal">
                         </div>
                     </div>
 
-                    <input type="text" v-model="form.name" placeholder="項目名稱" class="w-full text-sm py-3 border-b !border-x-0 !border-t-0 !rounded-none">
-
-                    <!-- 支付方式 -->
-                    <div class="flex space-x-2 overflow-x-auto py-2 no-scrollbar">
-                        <button v-for="m in ['現金', '信用卡', '掃碼支付', '郵局匯款']" @click="form.paymentMethod = m"
-                                :class="m === form.paymentMethod ? 'bg-gray-200 text-gray-700' : 'bg-gray-50 text-gray-400'"
-                                class="whitespace-nowrap px-4 py-2 rounded-full text-[10px] transition-colors">
-                            {{ m }}
-                        </button>
-                    </div>
-
-                    <!-- 進階選項 -->
-                    <div class="flex items-center justify-between pt-4 border-t border-gray-50">
-                        <span class="text-xs text-gray-400">留學一次性大筆支出</span>
-                        <input type="checkbox" v-model="form.isOneTime" class="accent-gray-600">
-                    </div>
-
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs text-gray-400">幫朋友代墊 / 需分帳</span>
-                        <input type="checkbox" v-model="form.isSplit" class="accent-gray-600">
-                    </div>
-
-                    <!-- 分帳詳細 (UX: 快速平分與對象選擇) -->
-                    <div v-if="form.isSplit" class="bg-gray-50 p-5 rounded-3xl space-y-4 animate-in slide-in-from-top-2 duration-300">
-                        <div class="flex justify-between items-center">
-                            <span class="text-[10px] text-gray-400">分帳對象</span>
-                            <input type="text" v-model="form.friendName" list="friends-list" placeholder="輸入名稱" class="text-xs w-32 text-right bg-transparent !border-none">
-                            <datalist id="friends-list">
-                                <option v-for="f in friends" :value="f"></option>
-                            </datalist>
+                    <div class="space-y-5">
+                        <div class="flex items-center justify-between px-2">
+                            <span class="text-[10px] text-gray-400 uppercase tracking-widest">Date</span>
+                            <input type="date" v-model="form.spendDate" class="text-sm bg-transparent outline-none text-right">
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-[10px] text-gray-400">快速平分</span>
-                            <div class="flex space-x-2">
-                                <button @click="quickSplit(2)" class="btn-split">1/2</button>
-                                <button @click="quickSplit(3)" class="btn-split">1/3</button>
+
+                        <!-- 分類選擇 -->
+                        <div class="grid grid-cols-4 gap-4 py-2">
+                            <div v-for="cat in categories" :key="cat.id" @click.stop="form.categoryId = cat.id"
+                                 :class="form.categoryId === cat.id ? 'bg-[#4A4A4A] text-white' : 'bg-gray-50 text-gray-300'"
+                                 class="flex flex-col items-center p-3 rounded-2xl transition-all">
+                                <span class="material-symbols-rounded text-xl">{{ cat.icon }}</span>
+                                <span class="text-[9px] mt-1">{{ cat.name }}</span>
                             </div>
                         </div>
-                        <div class="flex justify-between items-center border-t border-gray-100 pt-3">
-                            <span class="text-[10px] text-gray-500">我的份額 ({{ form.currency }})</span>
-                            <input type="number" v-model="form.personalShare" class="text-sm font-medium w-24 text-right bg-transparent !border-none">
+
+                        <input type="text" v-model="form.name" placeholder="項目名稱" class="w-full text-sm py-4 border-b border-gray-50 outline-none placeholder:text-gray-200">
+
+                        <!-- 支付方式 -->
+                        <div class="flex space-x-2 overflow-x-auto no-scrollbar py-2">
+                            <button v-for="m in ['現金', '信用卡', '掃碼支付', '郵局匯款']" @click.stop="form.paymentMethod = m"
+                                    :class="m === form.paymentMethod ? 'bg-gray-200 text-gray-700' : 'bg-gray-50 text-gray-300'"
+                                    class="whitespace-nowrap px-5 py-2 rounded-full text-[10px] transition-colors">
+                                {{ m }}
+                            </button>
+                        </div>
+
+                        <!-- 進階開關 -->
+                        <div class="space-y-4 pt-4 border-t border-gray-50">
+                            <div class="flex items-center justify-between" @click.stop="form.isOneTime = !form.isOneTime">
+                                <span class="text-xs text-gray-400">留學一次性大筆支出</span>
+                                <div class="w-10 h-5 rounded-full relative transition-colors" :class="form.isOneTime ? 'bg-gray-400' : 'bg-gray-200'">
+                                    <div class="absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform" :class="{'translate-x-5': form.isOneTime}"></div>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between" @click.stop="form.isSplit = !form.isSplit">
+                                <span class="text-xs text-gray-400">幫朋友代墊 / 需分帳</span>
+                                <div class="w-10 h-5 rounded-full relative transition-colors" :class="form.isSplit ? 'bg-gray-400' : 'bg-gray-200'">
+                                    <div class="absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform" :class="{'translate-x-5': form.isSplit}"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 分帳詳細 -->
+                        <div v-if="form.isSplit" class="bg-gray-50 p-6 rounded-3xl space-y-5 animate-in slide-in-from-top-4 duration-300">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] text-gray-400 uppercase">Friend</span>
+                                <input type="text" v-model="form.friendName" list="friends-list" placeholder="對象名稱" class="text-right bg-transparent outline-none text-xs w-32">
+                                <datalist id="friends-list"><option v-for="f in friends" :value="f"></option></datalist>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] text-gray-400 uppercase">Quick Split</span>
+                                <div class="flex space-x-2">
+                                    <button @click.stop="quickSplit(2)" class="px-3 py-1 border border-gray-200 rounded-full text-[10px]">1/2</button>
+                                    <button @click.stop="quickSplit(3)" class="px-3 py-1 border border-gray-200 rounded-full text-[10px]">1/3</button>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center pt-3 border-t border-gray-100">
+                                <span class="text-[10px] text-gray-500 uppercase">My Share ({{ form.currency }})</span>
+                                <input type="number" v-model="form.personalShare" class="text-right bg-transparent outline-none text-sm font-medium w-24">
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <button @click="submitForm" :disabled="loading" class="w-full bg-[#4A4A4A] text-white py-4 rounded-2xl text-sm font-light tracking-[0.2em] shadow-lg active:scale-[0.98] transition-transform">
-                    確認送出
-                </button>
+                    <button @click.stop="submitForm" :disabled="loading" class="w-full bg-[#4A4A4A] text-white py-5 rounded-2xl text-xs font-medium tracking-[0.3em] uppercase shadow-lg active:scale-[0.98] transition-all disabled:bg-gray-200">
+                        Confirm & Save
+                    </button>
+                </div>
+            </div>
+
+            <!-- 統計與設定 (佔位) -->
+            <div v-if="['stats', 'settings'].includes(currentTab)" class="flex flex-col items-center justify-center py-40 space-y-4">
+                <span class="material-symbols-rounded text-gray-200 text-5xl">architecture</span>
+                <p class="text-[10px] text-gray-300 tracking-[0.2em] uppercase">Coming Soon</p>
             </div>
         </main>
 
-        <!-- 底部導航欄 -->
-        <nav class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md flex justify-around items-center pb-8 pt-4 px-6 z-40">
-            <button v-for="tab in ['overview', 'history', 'add', 'stats', 'settings']" 
-                    @click="currentTab = tab" 
-                    :class="{'text-gray-800': currentTab === tab, 'text-gray-300': currentTab !== tab}"
-                    class="transition-colors">
-                <span class="material-symbols-rounded text-2xl" :class="{'!text-3xl': tab === 'add'}">{{ getTabIcon(tab) }}</span>
-            </button>
-        </nav>
+        <!-- [區塊] 底部導航欄 (固定樣式) -->
+        <footer class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-50 px-4 pb-8 pt-2 z-50">
+            <div class="max-w-md mx-auto flex items-center justify-between">
+                <button @click="currentTab = 'overview'" :class="currentTab === 'overview' ? 'active' : 'inactive'" class="nav-item">
+                    <span class="material-symbols-rounded">dashboard</span>
+                </button>
+                <button @click="currentTab = 'history'" :class="currentTab === 'history' ? 'active' : 'inactive'" class="nav-item">
+                    <span class="material-symbols-rounded">list_alt</span>
+                </button>
+                
+                <!-- 中間新增按鈕 -->
+                <div class="nav-item add-btn-container">
+                    <button @click="currentTab = 'add'" class="add-btn active:scale-90 transition-transform">
+                        <span class="material-symbols-rounded text-3xl">add</span>
+                    </button>
+                </div>
+
+                <button @click="currentTab = 'stats'" :class="currentTab === 'stats' ? 'active' : 'inactive'" class="nav-item">
+                    <span class="material-symbols-rounded">bar_chart</span>
+                </button>
+                <button @click="currentTab = 'settings'" :class="currentTab === 'settings' ? 'active' : 'inactive'" class="nav-item">
+                    <span class="material-symbols-rounded">settings</span>
+                </button>
+            </div>
+        </footer>
+
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzmNuifzAXQWvQC9lj2Yn2jOKHgSPKX2XnbxCx1ycmR044V_We8aEn1KC5nwXlyWG5S/exec"; // <--- 務必替換
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzmNuifzAXQWvQC9lj2Yn2jOKHgSPKX2XnbxCx1ycmR044V_We8aEn1KC5nwXlyWG5S/exec";
         const { createApp, ref, onMounted, computed } = Vue;
 
         createApp({
@@ -170,6 +223,7 @@
                 const categories = ref([]);
                 const friends = ref([]);
                 const fxRate = ref(0.22);
+                const transactions = ref([]);
                 
                 const form = ref({
                     type: '支出', currency: 'JPY', amount: '', spendDate: new Date().toISOString().split('T')[0],
@@ -179,21 +233,30 @@
 
                 const monthlyTotal = ref(0);
                 const debtTotal = ref(0);
+                const allTimeTotal = ref(0);
 
                 const toggleCurrency = () => form.value.currency = form.value.currency === 'JPY' ? 'TWD' : 'JPY';
-                const getTabIcon = (t) => ({overview:'dashboard', history:'list_alt', add:'add_circle', stats:'bar_chart', settings:'settings'}[t]);
-                const formatNumber = (num) => new Intl.NumberFormat().format(Math.round(num));
+                const formatNumber = (num) => new Intl.NumberFormat().format(Math.round(num || 0));
+                const getIcon = (id) => {
+                    const c = categories.value.find(x => x.id === id);
+                    return c ? c.icon : 'payments';
+                };
                 
                 const quickSplit = (n) => {
-                    form.value.personalShare = (form.value.amount / n).toFixed(0);
+                    if(!form.value.amount) return;
+                    form.value.personalShare = Math.round(form.value.amount / n);
                 };
 
                 const fetchInitialData = async () => {
-                    const res = await fetch(GAS_URL);
-                    const data = await res.json();
-                    categories.value = data.categories;
-                    friends.value = data.friends;
-                    fxRate.value = data.config.fx_rate;
+                    try {
+                        const res = await fetch(GAS_URL);
+                        const data = await res.json();
+                        categories.value = data.categories;
+                        friends.value = data.friends;
+                        fxRate.value = parseFloat(data.config.fx_rate);
+                    } catch (e) {
+                        console.error("Data Fetch Error", e);
+                    }
                 };
 
                 const submitForm = async () => {
@@ -210,10 +273,10 @@
 
                     try {
                         await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                        lastSaved.value = { ...payload }; // 存入預覽資料
+                        lastSaved.value = { ...payload };
                         // 重置表單
-                        form.value.amount = ''; form.value.name = ''; form.value.isSplit = false;
-                        await fetchInitialData(); // 重新獲取可能更新的朋友名單
+                        form.value.amount = ''; form.value.name = ''; form.value.isSplit = false; form.value.isOneTime = false;
+                        await fetchInitialData(); 
                     } catch (e) {
                         alert("儲存失敗");
                     } finally {
@@ -222,7 +285,7 @@
                 };
 
                 onMounted(fetchInitialData);
-                return { currentTab, loading, lastSaved, categories, friends, form, fxRate, monthlyTotal, debtTotal, toggleCurrency, getTabIcon, formatNumber, quickSplit, submitForm };
+                return { currentTab, loading, lastSaved, categories, friends, form, fxRate, transactions, monthlyTotal, debtTotal, allTimeTotal, toggleCurrency, getIcon, formatNumber, quickSplit, submitForm };
             }
         }).mount('#app');
     </script>
