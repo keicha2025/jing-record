@@ -10,267 +10,219 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <style>
         body { font-family: 'Noto Sans TC', 'Noto Sans JP', sans-serif; background-color: #FDFCFB; color: #4A4A4A; -webkit-tap-highlight-color: transparent; }
-        .muji-shadow { box-shadow: 0 2px 15px rgba(0,0,0,0.03); }
-        .material-symbols-rounded { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
-        .active-tab { color: #8C8279; font-weight: 500; }
-        input, select, textarea { border: 1px solid #E5E5E5 !important; border-radius: 8px !important; padding: 10px !important; outline: none; }
-        input:focus { border-color: #D1C7BD !important; }
-        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        .muji-shadow { box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        .loading-overlay { background: rgba(253, 252, 251, 0.85); backdrop-filter: blur(4px); }
+        .btn-split { border: 1px solid #E5E5E5; padding: 4px 12px; border-radius: 20px; font-size: 10px; }
+        .active-split { background: #4A4A4A; color: white; border-color: #4A4A4A; }
     </style>
 </head>
 <body>
-    <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col">
-        <!-- 頂部標題 -->
+    <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col relative">
+        
+        <!-- 全螢幕讀取鎖定 (UX: 鎖定點擊與明顯提示) -->
+        <div v-if="loading" class="fixed inset-0 z-[100] loading-overlay flex flex-col items-center justify-center">
+            <div class="w-8 h-8 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin mb-4"></div>
+            <p class="text-xs tracking-widest text-gray-500 font-light">正在同步至 Google Sheets...</p>
+        </div>
+
+        <!-- 成功預覽視窗 (UX: 紀錄後確認) -->
+        <div v-if="lastSaved" class="fixed inset-0 z-[90] flex items-center justify-center p-6 bg-black/5">
+            <div class="bg-white w-full rounded-3xl p-8 muji-shadow text-center space-y-6 animate-in fade-in zoom-in duration-300">
+                <span class="material-symbols-rounded text-5xl text-gray-300">task_alt</span>
+                <div>
+                    <p class="text-xs text-gray-400">紀錄成功</p>
+                    <h3 class="text-2xl font-light mt-1">¥ {{ formatNumber(lastSaved.amountJPY) }}</h3>
+                    <p class="text-sm text-gray-400 mt-1">{{ lastSaved.name }}</p>
+                </div>
+                <button @click="lastSaved = null" class="w-full py-3 bg-gray-100 rounded-xl text-sm font-medium">關閉</button>
+            </div>
+        </div>
+
         <header class="p-6 pb-2">
-            <h1 class="text-xl font-light tracking-widest text-gray-400">NICHI-NICHI LOG</h1>
-            <p class="text-xs text-gray-300">留學生活記帳</p>
+            <h1 class="text-xl font-light tracking-widest text-gray-400 uppercase">Nichi-Nichi</h1>
         </header>
 
-        <!-- 主要內容區 -->
-        <main class="flex-grow p-4 mb-20 overflow-y-auto">
+        <main class="flex-grow p-4 mb-24 overflow-y-auto">
             
-            <!-- 分頁 1: 總覽 -->
+            <!-- 分頁: 總覽 -->
             <div v-if="currentTab === 'overview'" class="space-y-6">
-                <div class="bg-white p-6 rounded-2xl muji-shadow border border-gray-50">
-                    <p class="text-xs text-gray-400 mb-1">本月生活花費預估</p>
-                    <h2 class="text-3xl font-light">¥ {{ formatNumber(monthlyTotal) }}</h2>
-                    <p class="text-sm text-gray-300 mt-1">≈ NT$ {{ formatNumber(monthlyTotal * fxRate) }}</p>
+                <div class="bg-white p-8 rounded-3xl muji-shadow border border-gray-50">
+                    <p class="text-xs text-gray-400 mb-2">當月累計支出</p>
+                    <h2 class="text-4xl font-light text-gray-700">¥ {{ formatNumber(monthlyTotal) }}</h2>
+                    <p class="text-xs text-gray-300 mt-2 italic">≈ NT$ {{ formatNumber(monthlyTotal * fxRate) }}</p>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-white p-4 rounded-xl muji-shadow text-center">
-                        <p class="text-[10px] text-gray-400">待收代墊</p>
-                        <p class="text-lg">¥ {{ formatNumber(debtTotal) }}</p>
-                    </div>
-                    <div class="bg-white p-4 rounded-xl muji-shadow text-center border-l-4 border-[#E0D7C6]">
-                        <p class="text-[10px] text-gray-400">留學總投入</p>
-                        <p class="text-lg">¥ {{ formatNumber(allTimeTotal) }}</p>
-                    </div>
+                <div class="bg-white p-6 rounded-2xl muji-shadow flex justify-between items-center">
+                    <span class="text-xs text-gray-400">目前待收代墊款</span>
+                    <span class="text-lg font-light">¥ {{ formatNumber(debtTotal) }}</span>
                 </div>
             </div>
 
-            <!-- 分頁 2: 明細 (簡化版) -->
-            <div v-if="currentTab === 'history'" class="space-y-3">
-                <div v-for="item in transactions" :key="item.id" class="bg-white p-4 rounded-xl muji-shadow flex justify-between items-center">
-                    <div class="flex items-center space-x-3">
-                        <span class="material-symbols-rounded text-gray-400">{{ getIcon(item.categoryId) }}</span>
-                        <div>
-                            <p class="text-sm">{{ item.name }}</p>
-                            <p class="text-[10px] text-gray-300">{{ item.spendDate }}</p>
+            <!-- 分頁: 新增 -->
+            <div v-if="currentTab === 'add'" class="bg-white p-6 rounded-3xl muji-shadow space-y-6">
+                <!-- 收支切換 -->
+                <div class="flex bg-gray-100 rounded-xl p-1" @click="form.type = (form.type === '支出' ? '收入' : '支出')">
+                    <div :class="{'translate-x-full': form.type === '收入'}" class="w-1/2 bg-white rounded-lg shadow-sm py-2 text-center text-sm transition-transform duration-300 ease-out">
+                        {{ form.type }}
+                    </div>
+                    <div class="absolute inset-0 flex">
+                        <div class="flex-1 text-center py-2 text-sm text-gray-400 pointer-events-none">支出</div>
+                        <div class="flex-1 text-center py-2 text-sm text-gray-400 pointer-events-none">收入</div>
+                    </div>
+                </div>
+
+                <!-- 金額與幣別切換 (UX: 直接點擊切換) -->
+                <div class="text-center py-4">
+                    <div class="inline-flex items-baseline space-x-2">
+                        <span @click="toggleCurrency" class="text-xl font-medium text-gray-400 cursor-pointer select-none">{{ form.currency }}</span>
+                        <input type="number" v-model="form.amount" class="text-5xl font-light w-48 text-center bg-transparent outline-none border-none" placeholder="0" autofocus>
+                    </div>
+                    <p class="text-[10px] text-gray-300 mt-2">點擊單位切換 JPY / TWD</p>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- 消費日期 -->
+                    <div class="flex items-center justify-between border-b border-gray-50 py-2">
+                        <span class="text-xs text-gray-400">日期</span>
+                        <input type="date" v-model="form.spendDate" class="text-sm bg-transparent !border-none text-right">
+                    </div>
+
+                    <!-- 分類選擇 -->
+                    <div class="grid grid-cols-4 gap-4 py-2">
+                        <div v-for="cat in categories" :key="cat.id" @click="form.categoryId = cat.id"
+                             :class="{'bg-[#4A4A4A] text-white': form.categoryId === cat.id, 'text-gray-400 bg-gray-50': form.categoryId !== cat.id}"
+                             class="flex flex-col items-center p-3 rounded-2xl transition-all duration-300">
+                            <span class="material-symbols-rounded">{{ cat.icon }}</span>
+                            <span class="text-[9px] mt-1">{{ cat.name }}</span>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <p class="text-sm font-medium">¥ {{ formatNumber(item.amountJPY) }}</p>
-                        <p v-if="item.isOneTime" class="text-[8px] bg-gray-100 px-1 rounded text-gray-400">一次性</p>
+
+                    <input type="text" v-model="form.name" placeholder="項目名稱" class="w-full text-sm py-3 border-b !border-x-0 !border-t-0 !rounded-none">
+
+                    <!-- 支付方式 -->
+                    <div class="flex space-x-2 overflow-x-auto py-2 no-scrollbar">
+                        <button v-for="m in ['現金', '信用卡', '掃碼支付', '郵局匯款']" @click="form.paymentMethod = m"
+                                :class="m === form.paymentMethod ? 'bg-gray-200 text-gray-700' : 'bg-gray-50 text-gray-400'"
+                                class="whitespace-nowrap px-4 py-2 rounded-full text-[10px] transition-colors">
+                            {{ m }}
+                        </button>
+                    </div>
+
+                    <!-- 進階選項 -->
+                    <div class="flex items-center justify-between pt-4 border-t border-gray-50">
+                        <span class="text-xs text-gray-400">留學一次性大筆支出</span>
+                        <input type="checkbox" v-model="form.isOneTime" class="accent-gray-600">
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-400">幫朋友代墊 / 需分帳</span>
+                        <input type="checkbox" v-model="form.isSplit" class="accent-gray-600">
+                    </div>
+
+                    <!-- 分帳詳細 (UX: 快速平分與對象選擇) -->
+                    <div v-if="form.isSplit" class="bg-gray-50 p-5 rounded-3xl space-y-4 animate-in slide-in-from-top-2 duration-300">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] text-gray-400">分帳對象</span>
+                            <input type="text" v-model="form.friendName" list="friends-list" placeholder="輸入名稱" class="text-xs w-32 text-right bg-transparent !border-none">
+                            <datalist id="friends-list">
+                                <option v-for="f in friends" :value="f"></option>
+                            </datalist>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] text-gray-400">快速平分</span>
+                            <div class="flex space-x-2">
+                                <button @click="quickSplit(2)" class="btn-split">1/2</button>
+                                <button @click="quickSplit(3)" class="btn-split">1/3</button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center border-t border-gray-100 pt-3">
+                            <span class="text-[10px] text-gray-500">我的份額 ({{ form.currency }})</span>
+                            <input type="number" v-model="form.personalShare" class="text-sm font-medium w-24 text-right bg-transparent !border-none">
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- 分頁 3: 新增 (核心功能) -->
-            <div v-if="currentTab === 'add'" class="bg-white p-6 rounded-2xl muji-shadow space-y-5">
-                <!-- 支出/收入 切換 -->
-                <div class="flex bg-gray-50 rounded-lg p-1">
-                    <button @click="form.type = '支出'" :class="{'bg-white shadow-sm': form.type === '支出'}" class="flex-1 py-2 text-sm rounded-md transition-all">支出</button>
-                    <button @click="form.type = '收入'" :class="{'bg-white shadow-sm': form.type === '收入'}" class="flex-1 py-2 text-sm rounded-md transition-all">收入</button>
-                </div>
-
-                <!-- 金額輸入 -->
-                <div class="relative">
-                    <span class="absolute left-3 top-3 text-gray-400 text-sm">{{ form.currency }}</span>
-                    <input type="number" v-model="form.amount" class="w-full text-right text-2xl font-light pr-4 py-4" placeholder="0">
-                    <button @click="toggleCurrency" class="absolute left-3 bottom-[-25px] text-[10px] text-gray-300 underline">切換幣別</button>
-                </div>
-
-                <!-- 日期 -->
-                <div class="flex flex-col space-y-1 pt-4">
-                    <label class="text-[10px] text-gray-400 uppercase tracking-widest">消費日期</label>
-                    <input type="date" v-model="form.spendDate" class="w-full text-sm">
-                </div>
-
-                <!-- 分類 -->
-                <div class="grid grid-cols-4 gap-4 py-2">
-                    <div v-for="cat in categories" :key="cat.id" 
-                         @click="form.categoryId = cat.id"
-                         :class="{'border-[#D1C7BD] bg-gray-50': form.categoryId === cat.id}"
-                         class="flex flex-col items-center p-2 border border-transparent rounded-xl transition-all">
-                        <span class="material-symbols-rounded text-gray-400">{{ cat.icon }}</span>
-                        <span class="text-[10px] mt-1">{{ cat.name }}</span>
-                    </div>
-                </div>
-
-                <input type="text" v-model="form.name" placeholder="項目名稱 (例如: 吉野家)" class="w-full text-sm">
-                <textarea v-model="form.note" placeholder="備忘錄..." class="w-full text-sm h-20"></textarea>
-
-                <!-- 支付方式 -->
-                <select v-model="form.paymentMethod" class="w-full text-sm bg-white">
-                    <option value="現金">現金</option>
-                    <option value="信用卡">信用卡</option>
-                    <option value="掃碼支付">掃碼支付 (PayPay)</option>
-                    <option value="郵局匯款">郵局匯款</option>
-                </select>
-
-                <!-- 進階開關 -->
-                <div class="space-y-3 pt-2">
-                    <label class="flex items-center space-x-3">
-                        <input type="checkbox" v-model="form.isOneTime" class="w-4 h-4">
-                        <span class="text-xs text-gray-500">這是一次性大筆支出 (不計入日常)</span>
-                    </label>
-                    <label class="flex items-center space-x-3">
-                        <input type="checkbox" v-model="form.isSplit" class="w-4 h-4">
-                        <span class="text-xs text-gray-500">幫朋友代墊 / 需分帳</span>
-                    </label>
-                </div>
-
-                <!-- 分帳細節 -->
-                <div v-if="form.isSplit" class="bg-gray-50 p-4 rounded-xl space-y-3">
-                    <div class="flex justify-between items-center text-xs">
-                        <span>我的份額</span>
-                        <input type="number" v-model="form.personalShare" class="w-24 text-right">
-                    </div>
-                    <p class="text-[10px] text-gray-400 text-right">代墊金額: ¥ {{ form.amount - form.personalShare }}</p>
-                </div>
-
-                <button @click="submitForm" :disabled="loading" class="w-full bg-[#4A4A4A] text-white py-4 rounded-xl text-sm font-light tracking-widest disabled:bg-gray-300">
-                    {{ loading ? '傳送中...' : '確認紀錄' }}
+                <button @click="submitForm" :disabled="loading" class="w-full bg-[#4A4A4A] text-white py-4 rounded-2xl text-sm font-light tracking-[0.2em] shadow-lg active:scale-[0.98] transition-transform">
+                    確認送出
                 </button>
             </div>
-
-            <!-- 其他分頁 (開發中提示) -->
-            <div v-if="['stats', 'settings'].includes(currentTab)" class="flex flex-col items-center justify-center h-64 text-gray-300">
-                <span class="material-symbols-rounded text-4xl mb-2">construction</span>
-                <p class="text-xs">統計與設定功能開發中</p>
-            </div>
-
         </main>
 
         <!-- 底部導航欄 -->
-        <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-around items-center safe-area-bottom z-50">
-            <button @click="currentTab = 'overview'" :class="{'active-tab': currentTab === 'overview'}" class="p-4 flex flex-col items-center">
-                <span class="material-symbols-rounded">dashboard</span>
-            </button>
-            <button @click="currentTab = 'history'" :class="{'active-tab': currentTab === 'history'}" class="p-4 flex flex-col items-center">
-                <span class="material-symbols-rounded">list_alt</span>
-            </button>
-            <button @click="currentTab = 'add'" :class="{'active-tab': currentTab === 'add'}" class="p-4 flex flex-col items-center bg-gray-50 rounded-full mb-8 muji-shadow">
-                <span class="material-symbols-rounded">add</span>
-            </button>
-            <button @click="currentTab = 'stats'" :class="{'active-tab': currentTab === 'stats'}" class="p-4 flex flex-col items-center">
-                <span class="material-symbols-rounded">bar_chart</span>
-            </button>
-            <button @click="currentTab = 'settings'" :class="{'active-tab': currentTab === 'settings'}" class="p-4 flex flex-col items-center">
-                <span class="material-symbols-rounded">settings</span>
+        <nav class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md flex justify-around items-center pb-8 pt-4 px-6 z-40">
+            <button v-for="tab in ['overview', 'history', 'add', 'stats', 'settings']" 
+                    @click="currentTab = tab" 
+                    :class="{'text-gray-800': currentTab === tab, 'text-gray-300': currentTab !== tab}"
+                    class="transition-colors">
+                <span class="material-symbols-rounded text-2xl" :class="{'!text-3xl': tab === 'add'}">{{ getTabIcon(tab) }}</span>
             </button>
         </nav>
-
-        <!-- 簡單通知 -->
-        <div v-if="toast" class="fixed top-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-2 rounded-full text-xs z-[100]">
-            {{ toast }}
-        </div>
     </div>
 
     <script>
-        // --- 設定區：請將你的 GAS 網址貼在下方 ---
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzmNuifzAXQWvQC9lj2Yn2jOKHgSPKX2XnbxCx1ycmR044V_We8aEn1KC5nwXlyWG5S/exec";
-        // ------------------------------------
-
+        const GAS_URL = "你的GAS網址"; // <--- 務必替換
         const { createApp, ref, onMounted, computed } = Vue;
 
         createApp({
             setup() {
                 const currentTab = ref('add');
                 const loading = ref(false);
-                const toast = ref(null);
+                const lastSaved = ref(null);
                 const categories = ref([]);
+                const friends = ref([]);
                 const fxRate = ref(0.22);
-                const transactions = ref([]); // 真實環境中應從 GAS 抓取
-
+                
                 const form = ref({
-                    type: '支出',
-                    currency: 'JPY',
-                    amount: '',
-                    spendDate: new Date().toISOString().split('T')[0],
-                    categoryId: 'cat_001',
-                    name: '',
-                    note: '',
-                    paymentMethod: '現金',
-                    isOneTime: false,
-                    isSplit: false,
-                    personalShare: 0
+                    type: '支出', currency: 'JPY', amount: '', spendDate: new Date().toISOString().split('T')[0],
+                    categoryId: 'cat_001', name: '', note: '', paymentMethod: '現金',
+                    isOneTime: false, isSplit: false, friendName: '', personalShare: 0
                 });
 
-                // 模擬數據 (實際應從歷史紀錄統計)
-                const monthlyTotal = computed(() => 125800);
-                const debtTotal = computed(() => 3000);
-                const allTimeTotal = computed(() => 850000);
+                const monthlyTotal = ref(0);
+                const debtTotal = ref(0);
+
+                const toggleCurrency = () => form.value.currency = form.value.currency === 'JPY' ? 'TWD' : 'JPY';
+                const getTabIcon = (t) => ({overview:'dashboard', history:'list_alt', add:'add_circle', stats:'bar_chart', settings:'settings'}[t]);
+                const formatNumber = (num) => new Intl.NumberFormat().format(Math.round(num));
+                
+                const quickSplit = (n) => {
+                    form.value.personalShare = (form.value.amount / n).toFixed(0);
+                };
 
                 const fetchInitialData = async () => {
-                    try {
-                        const res = await fetch(GAS_URL);
-                        const data = await res.json();
-                        categories.value = data.categories;
-                        fxRate.value = data.config.fx_rate;
-                    } catch (e) {
-                        showToast("連線失敗，請檢查 GAS 部署");
-                    }
-                };
-
-                const toggleCurrency = () => {
-                    form.value.currency = form.value.currency === 'JPY' ? 'TWD' : 'JPY';
-                };
-
-                const getIcon = (id) => {
-                    const cat = categories.value.find(c => c.id === id);
-                    return cat ? cat.icon : 'sell';
-                };
-
-                const formatNumber = (num) => new Intl.NumberFormat().format(num);
-
-                const showToast = (msg) => {
-                    toast.value = msg;
-                    setTimeout(() => toast.value = null, 3000);
+                    const res = await fetch(GAS_URL);
+                    const data = await res.json();
+                    categories.value = data.categories;
+                    friends.value = data.friends;
+                    fxRate.value = data.config.fx_rate;
                 };
 
                 const submitForm = async () => {
-                    if (!form.value.amount || !form.value.name) {
-                        showToast("請填寫金額與名稱");
-                        return;
-                    }
-
+                    if (!form.value.amount || !form.value.name) return;
                     loading.value = true;
                     
                     const payload = {
                         ...form.value,
                         amountJPY: form.value.currency === 'JPY' ? form.value.amount : form.value.amount / fxRate.value,
                         amountTWD: form.value.currency === 'TWD' ? form.value.amount : form.value.amount * fxRate.value,
-                        debtAmount: form.value.isSplit ? (form.value.amount - form.value.personalShare) : 0
+                        debtAmount: form.value.isSplit ? (form.value.amount - form.value.personalShare) : 0,
+                        personalShare: form.value.isSplit ? form.value.personalShare : (form.value.currency === 'JPY' ? form.value.amount : form.value.amount / fxRate.value)
                     };
 
                     try {
-                        await fetch(GAS_URL, {
-                            method: 'POST',
-                            mode: 'no-cors', // GAS 需要 no-cors
-                            body: JSON.stringify(payload)
-                        });
-                        
-                        showToast("紀錄成功！");
+                        await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+                        lastSaved.value = { ...payload }; // 存入預覽資料
                         // 重置表單
-                        form.value.amount = '';
-                        form.value.name = '';
-                        form.value.note = '';
-                        currentTab.value = 'history';
+                        form.value.amount = ''; form.value.name = ''; form.value.isSplit = false;
+                        await fetchInitialData(); // 重新獲取可能更新的朋友名單
                     } catch (e) {
-                        showToast("儲存失敗");
+                        alert("儲存失敗");
                     } finally {
                         loading.value = false;
                     }
                 };
 
                 onMounted(fetchInitialData);
-
-                return {
-                    currentTab, loading, toast, categories, form, transactions, fxRate,
-                    monthlyTotal, debtTotal, allTimeTotal,
-                    toggleCurrency, getIcon, formatNumber, submitForm
-                }
+                return { currentTab, loading, lastSaved, categories, friends, form, fxRate, monthlyTotal, debtTotal, toggleCurrency, getTabIcon, formatNumber, quickSplit, submitForm };
             }
         }).mount('#app');
     </script>
