@@ -13,7 +13,7 @@ createApp({
     setup() {
         const currentTab = ref('add');
         const loading = ref(false);
-        const lastSaved = ref(null); // 保留但不用於阻擋跳轉
+        const lastSaved = ref(null);
         const categories = ref([]);
         const friends = ref([]);
         const transactions = ref([]);
@@ -70,15 +70,14 @@ createApp({
                     amountJPY: dataToSave.currency === 'JPY' ? dataToSave.amount : dataToSave.amount / fxRate.value 
                 };
                 await API.saveTransaction(payload);
-                
-                // 【核心修改】送出後直接跳轉明細，不顯示彈窗
-                currentTab.value = 'history';
+                if (dataToSave.action === 'edit') currentTab.value = 'history';
                 resetForm();
                 await loadData();
             } finally { loading.value = false; }
         };
 
         const handleDelete = async (row) => {
+            if(!confirm("確定要永久刪除此筆資料嗎？")) return;
             loading.value = true;
             try {
                 await API.saveTransaction({ action: 'delete', row: row });
@@ -94,7 +93,15 @@ createApp({
         };
 
         const handleEditItem = (item) => {
-            editForm.value = JSON.parse(JSON.stringify({ ...item, amount: item.amountJPY, currency: 'JPY', action: 'edit' }));
+            // 在複製資料時，預先判斷是否為分帳項目
+            const hasSplit = item.friendName && item.friendName.trim() !== "";
+            editForm.value = JSON.parse(JSON.stringify({ 
+                ...item, 
+                amount: item.amountJPY, 
+                currency: 'JPY', 
+                action: 'edit',
+                isSplit: hasSplit 
+            }));
             currentTab.value = 'edit';
         };
 
@@ -105,6 +112,6 @@ createApp({
 
         onMounted(loadData);
 
-        return { currentTab, loading, categories, friends, transactions, filteredTransactions, historyFilter, form, editForm, stats, systemConfig, fxRate, handleSubmit, handleDelete, handleEditItem, formatNumber: (n) => new Intl.NumberFormat().format(Math.round(n || 0)), getTabIcon, toggleCurrency: () => form.value.currency = (form.value.currency === 'JPY' ? 'TWD' : 'JPY'), handleAddFriendToList: (n) => !friends.value.includes(n) && friends.value.push(n), resetForm, handleDrillDown: (id) => { historyFilter.value = {mode:'all', categoryId:id, friendName:null}; currentTab.value='history'; }, handleUpdateConfig: async (c) => { loading.value=true; await API.saveTransaction({action:'updateConfig', ...c}); await loadData(); } };
+        return { currentTab, loading, categories, friends, transactions, filteredTransactions, historyFilter, form, editForm, stats, systemConfig, fxRate, handleSubmit, handleDelete, handleEditItem, formatNumber: (n) => new Intl.NumberFormat().format(Math.round(n || 0)), getTabIcon, toggleCurrency: () => form.value.currency = (form.value.currency === 'JPY' ? 'TWD' : 'JPY'), handleAddFriendToList: (n) => !friends.value.includes(n) && friends.value.push(n), resetForm, handleDrillDown: (id) => { historyFilter.value = {mode:'all', categoryId:id, friendName:null}; currentTab.value='history'; }, handleUpdateConfig: async (c) => { loading.value=true; await API.saveTransaction({action:'updateConfig', ...c}); await loadData(); }, handleViewFriend: (n) => { historyFilter.value = {mode:'all', categoryId:null, friendName:n}; currentTab.value='history'; } };
     }
 }).mount('#app');

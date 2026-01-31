@@ -2,8 +2,20 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>日日記 | Nichi-Nichi Log</title>
+    
+    <!-- PWA 核心設定 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4A4A4A">
+    
+    <!-- iOS 專屬優化 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="日日記">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2544/2544087.png">
+
+    <!-- 外部資源 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -13,10 +25,9 @@
 </head>
 <body>
     <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col relative overflow-hidden" v-cloak>
-        
         <div v-if="loading" class="fixed inset-0 z-[100] loading-overlay flex flex-col items-center justify-center">
             <div class="w-8 h-8 border-2 border-gray-100 border-t-gray-500 rounded-full animate-spin mb-4"></div>
-            <p class="text-[10px] tracking-[0.2em] text-gray-400 uppercase font-light">Syncing Data...</p>
+            <p class="text-[10px] tracking-[0.2em] text-gray-400 uppercase font-light">Syncing...</p>
         </div>
 
         <header class="p-6 pb-2 shrink-0 flex justify-between items-end">
@@ -56,23 +67,27 @@
 
             <history-page v-if="currentTab === 'history'" :transactions="filteredTransactions" :categories="categories" @edit-item="handleEditItem"></history-page>
             <add-page v-if="currentTab === 'add'" :form="form" :categories="categories" :friends="friends" :loading="loading" @toggle-currency="toggleCurrency" @submit="handleSubmit(form)" @add-friend-to-list="handleAddFriendToList"></add-page>
-            
-            <!-- 編輯頁：串接 delete-item 事件 -->
             <edit-page v-if="currentTab === 'edit'" :form="editForm" :categories="categories" :friends="friends" :loading="loading" @submit="handleSubmit(editForm)" @delete-item="handleDelete" @cancel="currentTab = 'history'; editForm = null;"></edit-page>
-            
             <stats-page v-if="currentTab === 'stats'" :transactions="transactions" :categories="categories" @drill-down="handleDrillDown"></stats-page>
             <settings-page v-if="currentTab === 'settings'" :config="systemConfig" :friends="friends" @update-config="handleUpdateConfig" @view-friend="handleViewFriend"></settings-page>
         </main>
 
         <footer class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-50 px-6 pb-10 pt-4 z-50">
             <div class="max-w-md mx-auto flex items-center justify-between">
-                <button v-for="tab in ['overview', 'history', 'add', 'stats', 'settings']" @click="currentTab = tab; if(tab !== 'history') historyFilter = { mode: 'all', categoryId: null, friendName: null };" :class="[currentTab === tab ? 'text-gray-800' : 'text-gray-200', tab === 'add' ? 'add-btn-wrap' : 'nav-item']">
+                <button v-for="tab in ['overview', 'history', 'add', 'stats', 'settings']" @click="currentTab = tab" :class="[currentTab === tab ? 'text-gray-800' : 'text-gray-200', tab === 'add' ? 'add-btn-wrap' : 'nav-item']">
                     <div v-if="tab === 'add'" class="add-btn active:scale-90 transition-transform"><span class="material-symbols-rounded !text-3xl">add</span></div>
                     <span v-else class="material-symbols-rounded text-2xl">{{ getTabIcon(tab) }}</span>
                 </button>
             </div>
         </footer>
     </div>
+
+    <!-- 註冊 Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js');
+      }
+    </script>
     <script type="module" src="./js/app.js"></script>
 </body>
 </html>
