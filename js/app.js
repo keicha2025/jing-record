@@ -5,11 +5,12 @@ import { EditPage } from './pages/edit-page.js';
 import { HistoryPage } from './pages/history-page.js';
 import { StatsPage } from './pages/stats-page.js';
 import { SettingsPage } from './pages/settings-page.js';
+import { OverviewPage } from "./pages/overview-page.js";
 
 const { createApp, ref, onMounted, computed } = window.Vue;
 
 createApp({
-    components: { 'add-page': AddPage, 'edit-page': EditPage, 'history-page': HistoryPage, 'stats-page': StatsPage, 'settings-page': SettingsPage },
+    components: { 'overview-page': OverviewPage, 'add-page': AddPage, 'edit-page': EditPage, 'history-page': HistoryPage, 'stats-page': StatsPage, 'settings-page': SettingsPage },
     setup() {
         const currentTab = ref('add');
         const loading = ref(false);
@@ -34,7 +35,7 @@ createApp({
             const filter = historyFilter.value;
             if (filter.mode === 'monthly') {
                 const now = new Date();
-                list = list.filter(t => new Date(t.spendDate).getMonth() === now.getMonth() && !t.isOneTime);
+                list = list.filter(t => new Date(t.spendDate).getMonth() === now.getMonth() && new Date(t.spendDate).getFullYear() === now.getFullYear() && !t.isOneTime);
             } else if (filter.mode === 'onetime') {
                 list = list.filter(t => t.isOneTime);
             } else if (filter.mode === 'debt') {
