@@ -1,7 +1,7 @@
 export const OverviewPage = {
     template: `
-    <section class="space-y-6 py-4 animate-in fade-in">
-        <!-- 1. 本日支出 (含長條圖與切換) -->
+    <section class="space-y-6 py-4 animate-in fade-in pb-10">
+        <!-- 1. 本日支出 (滿版) -->
         <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
             <div class="flex justify-between items-center px-2">
                 <div class="flex flex-col">
@@ -12,30 +12,35 @@ export const OverviewPage = {
                     {{ isMyShare ? '我的支出' : '總支出' }}
                 </button>
             </div>
-            
             <div class="h-32 w-full pt-2">
                 <canvas ref="barChart"></canvas>
             </div>
         </div>
 
-        <!-- 2. 淨欠款狀態 -->
-        <div class="bg-white p-6 rounded-2xl muji-shadow border border-gray-50 flex justify-between items-center" @click="$emit('go-to-history', { mode: 'debt' })">
-            <div>
-                <p class="text-[10px] text-gray-400 font-medium uppercase tracking-widest">Net Debt Status</p>
-                <p class="text-xl font-light mt-1" :class="stats.debtTotal >= 0 ? 'text-gray-600' : 'text-red-300'">¥ {{ formatNumber(Math.abs(stats.debtTotal)) }}</p>
-            </div>
-            <span class="material-symbols-rounded text-gray-200">arrow_forward_ios</span>
-        </div>
-
-        <!-- 3. 本月與留學累計 (總支出) -->
+        <!-- 2. 本月與留學累計 (並列) -->
         <div class="grid grid-cols-2 gap-4">
-            <div @click="$emit('go-to-history', { mode: 'monthly' })" class="bg-white p-6 rounded-2xl muji-shadow border border-gray-50">
-                <p class="text-[10px] text-gray-400 mb-1 font-medium uppercase tracking-widest">本月累計</p>
+            <div @click="$emit('go-to-history', { mode: 'monthly' })" class="bg-white p-6 rounded-2xl muji-shadow border border-gray-50 active:scale-95 transition-all">
+                <p class="text-[10px] text-gray-400 mb-1 font-medium uppercase tracking-widest">本月累計支出</p>
                 <p class="text-xl font-light text-gray-600">¥ {{ formatNumber(monthlyOutflow) }}</p>
             </div>
-            <div @click="$emit('go-to-history', { mode: 'all' })" class="bg-white p-6 rounded-2xl muji-shadow border border-gray-50">
-                <p class="text-[10px] text-gray-400 mb-1 font-medium uppercase tracking-widest">留學累計</p>
+            <div @click="$emit('go-to-history', { mode: 'all' })" class="bg-white p-6 rounded-2xl muji-shadow border border-gray-50 active:scale-95 transition-all">
+                <p class="text-[10px] text-gray-400 mb-1 font-medium uppercase tracking-widest">留學累計支出</p>
                 <p class="text-xl font-light text-gray-600">¥ {{ formatNumber(totalOutflow) }}</p>
+            </div>
+        </div>
+
+        <!-- 3. 淨欠款與總收入 (並列) -->
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bg-white p-6 rounded-2xl muji-shadow border border-gray-50 flex flex-col justify-between active:scale-95 transition-all" @click="$emit('go-to-history', { mode: 'debt' })">
+                <p class="text-[10px] text-gray-400 font-medium uppercase tracking-widest">淨欠款狀態</p>
+                <div class="flex justify-between items-end mt-2">
+                    <p class="text-xl font-light" :class="stats.debtTotal >= 0 ? 'text-gray-600' : 'text-red-300'">¥ {{ formatNumber(Math.abs(stats.debtTotal)) }}</p>
+                    <span class="material-symbols-rounded text-gray-200 text-sm">arrow_forward_ios</span>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl muji-shadow border border-gray-50 active:scale-95 transition-all">
+                <p class="text-[10px] text-gray-400 mb-1 font-medium uppercase tracking-widest">留學總收入</p>
+                <p class="text-xl font-light text-gray-400">¥ {{ formatNumber(totalIncome) }}</p>
             </div>
         </div>
     </section>
@@ -75,6 +80,11 @@ export const OverviewPage = {
         totalOutflow() {
             return this.transactions
                 .filter(t => t.type === '支出')
+                .reduce((acc, cur) => acc + (cur.amountJPY || 0), 0);
+        },
+        totalIncome() {
+            return this.transactions
+                .filter(t => t.type === '收入')
                 .reduce((acc, cur) => acc + (cur.amountJPY || 0), 0);
         },
         lastFiveDaysData() {
