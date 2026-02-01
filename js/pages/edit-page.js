@@ -39,7 +39,7 @@ export const EditPage = {
                 <!-- 3. 日期與分類 -->
                 <label class="flex items-center justify-between px-2 py-2 cursor-pointer active:bg-gray-50 rounded-xl transition-colors">
                     <span class="text-[10px] text-gray-400 uppercase tracking-widest">消費日期</span>
-                    <input type="date" v-model="form.spendDate" class="text-sm bg-transparent outline-none text-right cursor-pointer">
+                    <input type="datetime-local" v-model="form.spendDate" class="text-sm bg-transparent outline-none text-right cursor-pointer">
                 </label>
 
                 <div v-if="form.type !== '收款'" class="grid grid-cols-4 gap-4 py-2">

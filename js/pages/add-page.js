@@ -46,7 +46,7 @@ export const AddPage = {
 
                 <label class="flex items-center justify-between px-2 cursor-pointer active:bg-gray-50 rounded-xl p-2 transition-colors">
                     <span class="text-[10px] text-gray-400 uppercase tracking-widest">Date</span>
-                    <input type="date" v-model="form.spendDate" class="text-sm bg-transparent outline-none text-right">
+                    <input type="datetime-local" v-model="form.spendDate" class="text-sm bg-transparent outline-none text-right">
                 </label>
 
                 <div v-if="form.type !== '收款'" class="grid grid-cols-4 gap-4 py-2">

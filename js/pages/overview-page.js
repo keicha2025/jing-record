@@ -60,7 +60,7 @@ export const OverviewPage = {
         },
         displayAmount() {
             const targetDate = this.selectedDateStr || this.todayStr;
-            const dailyTrans = this.transactions.filter(t => t.spendDate === targetDate && t.type === '支出');
+            const dailyTrans = this.transactions.filter(t => t.spendDate.startsWith(targetDate) && t.type === '支出');
             return dailyTrans.reduce((acc, cur) => {
                 return acc + (this.isMyShare ? (cur.personalShare || 0) : (cur.amountJPY || 0));
             }, 0);
@@ -86,7 +86,7 @@ export const OverviewPage = {
                                String(d.getMonth() + 1).padStart(2, '0') + '/' + 
                                String(d.getDate()).padStart(2, '0');
                 
-                const dayTrans = this.transactions.filter(t => t.spendDate === dateStr && t.type === '支出');
+                const dayTrans = this.transactions.filter(t => t.spendDate.startsWith(dateStr) && t.type === '支出');
                 result.push({ 
                     date: dateStr, 
                     displayDate: dateStr.substring(5), 

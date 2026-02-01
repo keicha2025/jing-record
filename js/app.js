@@ -12,6 +12,11 @@ const { createApp, ref, onMounted, computed } = window.Vue;
 createApp({
     components: { 'overview-page': OverviewPage, 'add-page': AddPage, 'edit-page': EditPage, 'history-page': HistoryPage, 'stats-page': StatsPage, 'settings-page': SettingsPage },
     setup() {
+        const getLocalISOString = () => {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            return now.toISOString().slice(0, 16);
+        };
         const currentTab = ref('add');
         const loading = ref(false);
         const lastSaved = ref(null);
@@ -25,7 +30,7 @@ createApp({
         const editForm = ref(null);
 
         const form = ref({
-            type: '支出', currency: 'JPY', amount: '', spendDate: new Date().toISOString().split('T')[0],
+            type: '支出', currency: 'JPY', amount: '', spendDate: getLocalISOString(),
             categoryId: 'cat_001', name: '', note: '', paymentMethod: '現金',
             isOneTime: false, isSplit: false, friendName: '', personalShare: 0, payer: '我', isAlreadyPaid: false, action: 'add'
         });
@@ -89,15 +94,17 @@ createApp({
         };
 
         const resetForm = () => {
-            form.value = { type: '支出', currency: 'JPY', amount: '', spendDate: new Date().toISOString().split('T')[0], categoryId: 'cat_001', name: '', note: '', paymentMethod: '現金', isOneTime: false, isSplit: false, friendName: '', personalShare: 0, payer: '我', isAlreadyPaid: false, action: 'add' };
+            form.value = { type: '支出', currency: 'JPY', amount: '', spendDate: getLocalISOString(), categoryId: 'cat_001', name: '', note: '', paymentMethod: '現金', isOneTime: false, isSplit: false, friendName: '', personalShare: 0, payer: '我', isAlreadyPaid: false, action: 'add' };
             editForm.value = null;
         };
 
         const handleEditItem = (item) => {
+            const formattedDate = item.spendDate ? item.spendDate.replace(/\//g, "-").replace(" ", "T") : getLocalISOString();
             // 在複製資料時，預先判斷是否為分帳項目
             const hasSplit = item.friendName && item.friendName.trim() !== "";
             editForm.value = JSON.parse(JSON.stringify({ 
                 ...item, 
+                spendDate: formattedDate,
                 amount: item.amountJPY, 
                 currency: 'JPY', 
                 action: 'edit',
