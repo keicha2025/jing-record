@@ -38,7 +38,7 @@ export const AddPage = {
                 <div v-if="form.type === '收款'" class="space-y-2">
                     <label class="text-[10px] text-gray-400 uppercase tracking-widest px-2 font-medium">收款對象</label>
                     <div class="flex flex-wrap gap-2 px-2">
-                        <button v-for="f in friends" :key="'r-'+f" @click="form.friendName = f" :class="form.friendName === f ? 'bg-[#4A4A4A] text-white' : 'bg-gray-50 text-gray-400'" class="px-3 py-1.5 rounded-full text-[10px]">{{ f }}</button>
+                        <button v-for="f in friends" :key="'r-'+f" @click="form.friendName = f" :class="form.friendName === f ? 'bg-[#4A4A4A] text-white' : 'bg-gray-50 text-gray-400'" class="px-4 py-1.5 rounded-full text-[10px]">{{ f }}</button>
                         <button @click="triggerAddFriend('friendName')" class="px-3 py-1.5 rounded-full bg-gray-100 text-gray-400 text-[10px]">+</button>
                     </div>
                     <!-- 本區塊新增輸入框 -->
@@ -160,6 +160,13 @@ export const AddPage = {
             else this.selectedFriends.push(name);
         },
         prepareAndSubmit() {
+            // [新增] 資料檢查邏輯
+            if (!this.form.amount || this.form.amount <= 0) { alert('請輸入有效的金額'); return; }
+            if (!this.form.name) { alert('請輸入項目名稱'); return; }
+            if (!this.form.paymentMethod) { alert('請選擇支付方式'); return; }
+            if (this.form.type !== '收款' && !this.form.categoryId) { alert('請選擇分類'); return; }
+            if (this.form.isSplit && this.selectedFriends.length === 0) { alert('已開啟分帳模式，請至少選擇一位朋友'); return; }
+            
             const share = this.splitMode === 'auto' ? this.autoShareValue : this.form.personalShare;
             let debt = 0;
             if (this.form.type === '支出') {

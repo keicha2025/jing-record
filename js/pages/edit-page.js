@@ -13,6 +13,7 @@ export const EditPage = {
                 </button>
             </div>
 
+            <!-- 1. 金額 -->
             <div class="text-center py-6 border-b border-gray-50">
                 <p class="text-[10px] text-gray-300 mb-2">{{ form.type }}金額</p>
                 <div v-if="isReadOnly" class="text-5xl font-light text-gray-700">
@@ -25,7 +26,7 @@ export const EditPage = {
             </div>
 
             <div class="space-y-5">
-                <!-- 收款/支出對象選取 -->
+                <!-- 2. 付款/收款對象 -->
                 <div class="space-y-2 px-2">
                     <label class="text-[10px] text-gray-400 uppercase tracking-widest font-medium">
                         {{ form.type === '收款' ? '誰還錢給我' : '付款人' }}
@@ -44,11 +45,26 @@ export const EditPage = {
                     </div>
                 </div>
 
-                <!-- 基礎資料 -->
+                <!-- 3. 日期 -->
                 <div class="flex items-center justify-between px-2 py-2 border-b border-gray-50">
                     <span class="text-[10px] text-gray-400 uppercase tracking-widest">消費日期</span>
                     <div v-if="isReadOnly" class="text-sm text-gray-600">{{ form.spendDate.replace('T', ' ') }}</div>
-                    <input v-else type="datetime-local" v-model="form.spendDate" class="text-sm bg-transparent outline-none text-right">
+                    <input v-else type="datetime-local" v-model="form.spendDate" class="text-sm bg-transparent outline-none text-right cursor-pointer">
+                </div>
+
+                <!-- 4. [補回] 分類 -->
+                <div v-if="form.type !== '收款'" class="space-y-2 px-2">
+                    <label class="text-[10px] text-gray-400 uppercase tracking-widest font-medium">分類</label>
+                    <div v-if="isReadOnly" class="flex items-center space-x-2 text-sm text-gray-600">
+                        <span class="material-symbols-rounded text-base text-gray-400">{{ getCategoryIcon(form.categoryId) }}</span>
+                        <span>{{ getCategoryName(form.categoryId) }}</span>
+                    </div>
+                    <div v-else class="grid grid-cols-4 gap-4 py-2">
+                        <div v-for="cat in filteredCategories" :key="cat.id" @click.stop="form.categoryId = cat.id" :class="form.categoryId === cat.id ? 'bg-[#4A4A4A] text-white shadow-lg' : 'bg-gray-50 text-gray-300'" class="flex flex-col items-center p-3 rounded-2xl transition-all">
+                            <span class="material-symbols-rounded text-xl">{{ cat.icon }}</span>
+                            <span class="text-[9px] mt-1">{{ cat.name }}</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="px-2 space-y-4">
@@ -57,6 +73,18 @@ export const EditPage = {
                         <div v-if="isReadOnly" class="text-sm text-gray-600">{{ form.name }}</div>
                         <input v-else type="text" v-model="form.name" class="w-full text-sm py-2 border-b border-gray-50 outline-none">
                     </div>
+                    
+                    <!-- 5. [補回] 支付方式 -->
+                    <div class="space-y-1">
+                        <label class="text-[10px] text-gray-400 uppercase font-medium">支付方式</label>
+                        <div v-if="isReadOnly" class="text-sm text-gray-600">{{ getPaymentName(form.paymentMethod) }}</div>
+                        <div v-else class="flex space-x-2 overflow-x-auto no-scrollbar py-2">
+                            <button v-for="pm in paymentMethods" :key="pm.id" @click.stop="form.paymentMethod = pm.id"
+                                    :class="pm.id === form.paymentMethod ? 'bg-[#4A4A4A] text-white' : 'bg-gray-50 text-gray-300'"
+                                    class="whitespace-nowrap px-5 py-2 rounded-full text-[10px] transition-colors">{{ pm.name }}</button>
+                        </div>
+                    </div>
+
                     <div class="space-y-1">
                         <label class="text-[10px] text-gray-400 uppercase font-medium">備註</label>
                         <div v-if="isReadOnly" class="text-xs text-gray-400 whitespace-pre-wrap">{{ form.note || '無備註' }}</div>
@@ -64,7 +92,7 @@ export const EditPage = {
                     </div>
                 </div>
 
-                <!-- 分帳區 -->
+                <!-- 6. 分帳 -->
                 <div v-if="form.type === '支出'" class="pt-4 border-t border-gray-50 space-y-4">
                     <div class="flex items-center justify-between px-2">
                         <span class="text-xs text-gray-400">幫朋友代墊 / 需分帳</span>
@@ -83,7 +111,6 @@ export const EditPage = {
                             <span class="text-[10px] text-gray-400">我的份額</span>
                             <span class="text-sm font-medium">¥ {{ formatNumber(autoShareValue) }}</span>
                         </div>
-                        <!-- 已收款標示 -->
                         <div class="flex items-center justify-between border-t border-gray-100 pt-3">
                             <span class="text-[10px] text-gray-400">對方已當場付清</span>
                             <input v-if="!isReadOnly" type="checkbox" v-model="form.isAlreadyPaid" class="accent-gray-600">
@@ -93,6 +120,7 @@ export const EditPage = {
                 </div>
             </div>
 
+            <!-- 7. 按鈕 -->
             <div class="space-y-4 pt-6">
                 <button v-if="isReadOnly" @click="isReadOnly = false" class="w-full bg-[#4A4A4A] text-white py-5 rounded-2xl text-[10px] font-medium tracking-[0.4em] uppercase shadow-lg">開始編輯</button>
                 <template v-else>
@@ -114,6 +142,9 @@ export const EditPage = {
     },
     methods: {
         formatNumber(num) { return new Intl.NumberFormat().format(Math.round(num || 0)); },
+        getCategoryName(id) { return this.categories.find(c => c.id === id)?.name || '未分類'; },
+        getCategoryIcon(id) { return this.categories.find(c => c.id === id)?.icon || 'sell'; },
+        getPaymentName(id) { const pm = this.paymentMethods.find(p => p.id === id); return pm ? pm.name : id; },
         toggleFriendInSplit(name) {
             const idx = this.selectedFriends.indexOf(name);
             if (idx > -1) this.selectedFriends.splice(idx, 1);
@@ -129,7 +160,7 @@ export const EditPage = {
                 this.form.friendName = this.selectedFriends.join(', ');
             } else if (this.form.type === '收款') {
                 debt = -this.form.amount;
-                this.form.payer = this.form.friendName; // 修正收款付款人為朋友
+                this.form.payer = this.form.friendName;
             }
             this.form.personalShare = share;
             this.form.debtAmount = debt;

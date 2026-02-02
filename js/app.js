@@ -39,7 +39,7 @@ createApp({
 
         const form = ref({
             type: '支出', currency: 'JPY', amount: '', spendDate: getLocalISOString(),
-            categoryId: 'cat_001', name: '', note: '', paymentMethod: '現金',
+            categoryId: 'cat_001', name: '', note: '', paymentMethod: '',
             isOneTime: false, isSplit: false, friendName: '', personalShare: 0, payer: '我', isAlreadyPaid: false, action: 'add'
         });
 
@@ -105,7 +105,7 @@ createApp({
         };
 
         const resetForm = () => {
-            form.value = { type: '支出', currency: 'JPY', amount: '', spendDate: getLocalISOString(), categoryId: 'cat_001', name: '', note: '', paymentMethod: '現金', isOneTime: false, isSplit: false, friendName: '', personalShare: 0, payer: '我', isAlreadyPaid: false, action: 'add' };
+            form.value = { type: '支出', currency: 'JPY', amount: '', spendDate: getLocalISOString(), categoryId: 'cat_001', name: '', note: '', paymentMethod: '', isOneTime: false, isSplit: false, friendName: '', personalShare: 0, payer: '我', isAlreadyPaid: false, action: 'add' };
             editForm.value = null;
         };
 
