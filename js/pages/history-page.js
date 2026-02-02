@@ -11,7 +11,7 @@ export const HistoryPage = {
                 <div class="flex flex-col">
                     <span class="text-sm font-medium text-gray-700">{{ item.name }}</span>
                     <div class="flex flex-wrap items-center gap-x-2 mt-0.5 text-[9px]">
-                        <span class="text-gray-300">{{ item.spendDate }}</span>
+                        <span class="text-gray-300">{{ item.spendDate }} · {{ getPaymentName(item.paymentMethod) }}</span>
                         <span v-if="item.payer !== '我' && item.type === '支出'" class="bg-gray-100 text-gray-500 px-1.5 rounded">{{ item.payer }} 付款</span>
                         <span v-if="item.type === '收款'" class="bg-gray-100 text-gray-400 px-1.5 rounded">{{ item.friendName }} 還款</span>
                     </div>
@@ -28,8 +28,9 @@ export const HistoryPage = {
         </div>
     </section>
     `,
-    props: ['transactions', 'categories'],
+    props: ['transactions', 'categories', 'paymentMethods'],
     methods: {
+        getPaymentName(id) { const pm = this.paymentMethods.find(p => p.id === id); return pm ? pm.name : id; },
         getIcon(id) {
             const cat = this.categories.find(c => c.id === id);
             return cat ? cat.icon : 'payments';

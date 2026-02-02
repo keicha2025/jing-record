@@ -103,7 +103,7 @@ export const EditPage = {
         </div>
     </section>
     `,
-    props: ['form', 'categories', 'friends', 'loading'],
+    props: ['form', 'categories', 'friends', 'loading', 'paymentMethods'],
     data() { return { selectedFriends: [], isReadOnly: true }; },
     computed: {
         filteredCategories() { return this.categories.filter(c => c.type === (this.form.type === '收款' ? '支出' : this.form.type)); },

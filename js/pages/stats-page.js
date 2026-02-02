@@ -1,7 +1,7 @@
 export const StatsPage = {
     template: `
     <section class="space-y-6 py-4 animate-in fade-in pb-10">
-        <!-- 1. 控制區 -->
+        <!-- 1. 模式切換與統計總額 -->
         <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-6">
             <div class="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
                 <div class="flex p-0.5 space-x-1">
@@ -9,8 +9,8 @@ export const StatsPage = {
                     <button @click="baseCurrency = 'TWD'" :class="baseCurrency === 'TWD' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1 text-[8px] rounded-lg transition-all uppercase font-bold">TWD</button>
                 </div>
                 <div class="flex p-0.5 space-x-1">
-                    <button @click="isMyShareOnly = false" :class="!isMyShareOnly ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1 text-[8px] rounded-lg transition-all font-bold">總和</button>
-                    <button @click="isMyShareOnly = true" :class="isMyShareOnly ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1 text-[8px] rounded-lg transition-all font-bold">我的</button>
+                    <button @click="isMyShareOnly = false" :class="!isMyShareOnly ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1 text-[8px] rounded-lg transition-all font-bold">總和模式</button>
+                    <button @click="isMyShareOnly = true" :class="isMyShareOnly ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1 text-[8px] rounded-lg transition-all font-bold">個人份額</button>
                 </div>
             </div>
 
@@ -39,15 +39,34 @@ export const StatsPage = {
             </div>
         </div>
 
-        <!-- 2. 圖表 -->
+        <!-- 2. 圖表區域 -->
         <div @click="resetChartSelection" class="bg-white p-8 rounded-[2rem] muji-shadow border border-gray-50 cursor-pointer">
-            <h3 class="text-[10px] text-gray-400 uppercase tracking-widest font-medium mb-8 text-center">Category Breakdown</h3>
+            <h3 class="text-[10px] text-gray-400 uppercase tracking-widest font-medium mb-8 text-center">Category Distribution</h3>
             <div class="relative w-full aspect-square max-w-[260px] mx-auto">
                 <canvas ref="categoryChart"></canvas>
             </div>
         </div>
 
-        <!-- 3. 列表 -->
+        <!-- 3. 支付方式 -->
+        <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-5">
+            <h3 class="text-[10px] text-gray-400 uppercase tracking-widest font-medium px-2">Payment Breakdown</h3>
+            <div class="space-y-4">
+                <div v-for="(val, method) in paymentStats" :key="method" class="space-y-1.5 px-2">
+                    <div class="flex justify-between items-baseline">
+                        <span class="text-[10px] text-gray-500">{{ getPaymentName(method) }}</span>
+                        <div class="flex space-x-2 items-baseline">
+                            <span class="text-xs font-medium text-gray-700">{{ getCurrencySymbol }} {{ formatNumber(val) }}</span>
+                            <span class="text-[9px] text-gray-300">{{ getIntPercentage(val, totalPeriodAmount) }}%</span>
+                        </div>
+                    </div>
+                    <div class="w-full bg-gray-50 h-1 rounded-full overflow-hidden">
+                        <div class="bg-gray-300 h-full transition-all duration-1000" :style="{ width: getIntPercentage(val, totalPeriodAmount) + '%' }"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 分類列表 -->
         <div class="space-y-3">
             <h3 class="text-[10px] text-gray-400 uppercase tracking-widest font-medium px-4">Categories</h3>
             <div v-for="cat in sortedCategoryData" :key="cat.id" 
@@ -70,7 +89,7 @@ export const StatsPage = {
         </div>
     </section>
     `,
-    props: ['transactions', 'categories', 'fxRate'],
+    props: ['transactions', 'categories', 'fxRate', 'paymentMethods'],
     data() {
         const now = new Date();
         return {
@@ -105,20 +124,15 @@ export const StatsPage = {
 
                 let finalVal = 0;
 
-                // 1. 決定基礎數值 (按付款人)
                 if (this.isMyShareOnly || t.payer !== '我') {
-                    // 個人份額模式 或 他人付款：基礎值為該項目的 Personal Share
                     if (originalCurr === this.baseCurrency) {
                         finalVal = personal;
                     } else if (this.baseCurrency === 'JPY') {
-                        // 原始台幣 -> 基準日幣 (TWD / rate = JPY)
                         finalVal = personal / rate;
                     } else {
-                        // 原始日幣 -> 基準台幣 (JPY * rate = TWD)
                         finalVal = personal * rate;
                     }
                 } else {
-                    // 總和模式 且 付款人是我：直接根據顯示幣別選取對應總額欄位
                     if (this.baseCurrency === 'JPY') {
                         finalVal = amtJPY;
                     } else {
@@ -144,6 +158,21 @@ export const StatsPage = {
             }
             return this.totalPeriodAmount / days;
         },
+        paymentStats() {
+            const stats = {};
+            // 初始化動態支付方式
+            if (this.paymentMethods) {
+                this.paymentMethods.forEach(pm => stats[pm.id] = 0);
+            }
+            // 累加
+            this.processedList.forEach(t => {
+                if (t.paymentMethod) {
+                    if (stats[t.paymentMethod] === undefined) stats[t.paymentMethod] = 0;
+                    stats[t.paymentMethod] += t.convertedAmount;
+                }
+            });
+            return stats;
+        },
         sortedCategoryData() {
             const map = {};
             this.processedList.forEach(t => {
@@ -158,6 +187,7 @@ export const StatsPage = {
         }
     },
     methods: {
+        getPaymentName(id) { const pm = this.paymentMethods.find(p => p.id === id); return pm ? pm.name : id; },
         formatNumber(num) { return new Intl.NumberFormat().format(Math.round(num || 0)); },
         getIntPercentage(val, total) { return total > 0 ? Math.round((val / total) * 100) : 0; },
         resetChartSelection() { this.centerLabel = 'TOTAL'; this.updateCenterFromVisible(this.chartInstance); },

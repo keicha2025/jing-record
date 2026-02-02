@@ -49,10 +49,10 @@
                 @go-to-history="historyFilter = { mode: $event.mode, categoryId: null, friendName: null, currency: $event.currency }; currentTab = 'history'" 
             ></overview-page>
 
-            <history-page v-if="currentTab === 'history'" :transactions="filteredTransactions" :categories="categories" @edit-item="handleEditItem"></history-page>
-            <add-page v-if="currentTab === 'add'" :form="form" :categories="categories" :friends="friends" :loading="loading" @toggle-currency="toggleCurrency" @submit="handleSubmit(form)" @add-friend-to-list="handleAddFriendToList"></add-page>
-            <edit-page v-if="currentTab === 'edit'" :form="editForm" :categories="categories" :friends="friends" :loading="loading" @submit="handleSubmit(editForm)" @delete-item="handleDelete" @cancel="currentTab = 'history'; editForm = null;"></edit-page>
-            <stats-page v-if="currentTab === 'stats'" :transactions="transactions" :categories="categories" :fx-rate="fxRate" @drill-down="handleDrillDown"></stats-page>
+            <history-page v-if="currentTab === 'history'" :transactions="filteredTransactions" :categories="categories" :payment-methods="paymentMethods" @edit-item="handleEditItem"></history-page>
+            <add-page v-if="currentTab === 'add'" :form="form" :categories="categories" :payment-methods="paymentMethods" :friends="friends" :loading="loading" @toggle-currency="toggleCurrency" @submit="handleSubmit(form)" @add-friend-to-list="handleAddFriendToList"></add-page>
+            <edit-page v-if="currentTab === 'edit'" :form="editForm" :categories="categories" :payment-methods="paymentMethods" :friends="friends" :loading="loading" @submit="handleSubmit(editForm)" @delete-item="handleDelete" @cancel="currentTab = 'history'; editForm = null;"></edit-page>
+            <stats-page v-if="currentTab === 'stats'" :transactions="transactions" :categories="categories" :payment-methods="paymentMethods" :fx-rate="fxRate" @drill-down="handleDrillDown"></stats-page>
             <settings-page v-if="currentTab === 'settings'" :config="systemConfig" :friends="friends" @update-config="handleUpdateConfig" @view-friend="handleViewFriend"></settings-page>
         </main>
 

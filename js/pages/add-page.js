@@ -66,9 +66,9 @@ export const AddPage = {
                 <div class="space-y-2">
                     <label class="text-[10px] text-gray-400 uppercase tracking-widest px-2 font-medium">支付方式</label>
                     <div class="flex space-x-2 overflow-x-auto no-scrollbar py-2 px-2">
-                        <button v-for="m in ['現金', '信用卡', '掃碼支付', '郵局匯款']" @click.stop="form.paymentMethod = m"
-                                :class="m === form.paymentMethod ? 'bg-[#4A4A4A] text-white' : 'bg-gray-50 text-gray-300'"
-                                class="whitespace-nowrap px-5 py-2 rounded-full text-[10px] transition-colors">{{ m }}</button>
+                        <button v-for="pm in paymentMethods" :key="pm.id" @click.stop="form.paymentMethod = pm.id"
+                                :class="pm.id === form.paymentMethod ? 'bg-[#4A4A4A] text-white' : 'bg-gray-50 text-gray-300'"
+                                class="whitespace-nowrap px-5 py-2 rounded-full text-[10px] transition-colors">{{ pm.name }}</button>
                     </div>
                 </div>
 
@@ -118,7 +118,7 @@ export const AddPage = {
         </div>
     </section>
     `,
-    props: ['form', 'categories', 'friends', 'loading'],
+    props: ['form', 'categories', 'friends', 'loading', 'paymentMethods'],
     data() {
         return { isAddingFriend: false, addFriendTarget: '', newFriendName: '', selectedFriends: [], splitMode: 'auto' };
     },
