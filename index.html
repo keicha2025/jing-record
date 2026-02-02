@@ -33,7 +33,7 @@
         <header class="p-6 pb-2 shrink-0 flex justify-between items-end">
             <h1 class="text-lg font-light tracking-[0.3em] text-gray-300 uppercase">Nichi-Nichi</h1>
             <div v-if="currentTab === 'history' && (historyFilter.mode !== 'all' || historyFilter.friendName || historyFilter.categoryId)" 
-                 @click="historyFilter = { mode: 'all', categoryId: null, friendName: null }"
+                 @click="historyFilter = { mode: 'all', categoryId: null, friendName: null, currency: null }"
                  class="flex items-center space-x-1 text-[9px] bg-gray-100 text-gray-400 px-3 py-1.5 rounded-full cursor-pointer">
                 <span class="material-symbols-rounded !text-xs">filter_list_off</span>
                 <span>CLEAR</span>
@@ -46,13 +46,13 @@
                 :transactions="transactions" 
                 :stats="stats" 
                 :fx-rate="fxRate" 
-                @go-to-history="historyFilter = { mode: $event.mode, categoryId: null, friendName: null }; currentTab = 'history'" 
+                @go-to-history="historyFilter = { mode: $event.mode, categoryId: null, friendName: null, currency: $event.currency }; currentTab = 'history'" 
             ></overview-page>
 
             <history-page v-if="currentTab === 'history'" :transactions="filteredTransactions" :categories="categories" @edit-item="handleEditItem"></history-page>
             <add-page v-if="currentTab === 'add'" :form="form" :categories="categories" :friends="friends" :loading="loading" @toggle-currency="toggleCurrency" @submit="handleSubmit(form)" @add-friend-to-list="handleAddFriendToList"></add-page>
             <edit-page v-if="currentTab === 'edit'" :form="editForm" :categories="categories" :friends="friends" :loading="loading" @submit="handleSubmit(editForm)" @delete-item="handleDelete" @cancel="currentTab = 'history'; editForm = null;"></edit-page>
-            <stats-page v-if="currentTab === 'stats'" :transactions="transactions" :categories="categories" @drill-down="handleDrillDown"></stats-page>
+            <stats-page v-if="currentTab === 'stats'" :transactions="transactions" :categories="categories" :fx-rate="fxRate" @drill-down="handleDrillDown"></stats-page>
             <settings-page v-if="currentTab === 'settings'" :config="systemConfig" :friends="friends" @update-config="handleUpdateConfig" @view-friend="handleViewFriend"></settings-page>
         </main>
 

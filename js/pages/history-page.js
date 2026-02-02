@@ -19,7 +19,7 @@ export const HistoryPage = {
             </div>
             <div class="text-right">
                 <p class="text-sm font-medium" :class="getSignClass(item.type)">
-                    {{ getSign(item.type) }} ¥ {{ formatNumber(item.type === '收款' ? item.amountJPY : item.personalShare) }}
+                    {{ getSign(item.type) }} {{ getCurrencySymbol(item.originalCurrency) }} {{ formatNumber(item.type === '收款' ? item.amountJPY : item.personalShare) }}
                 </p>
                 <div v-if="item.debtAmount !== 0" class="text-[8px] mt-0.5 font-medium" :class="item.debtAmount > 0 ? 'text-gray-400' : 'text-red-300'">
                     {{ item.debtAmount > 0 ? '債權 +' : '債務 ' }} ¥ {{ formatNumber(Math.abs(item.debtAmount)) }}
@@ -36,6 +36,7 @@ export const HistoryPage = {
         },
         formatNumber(num) { return new Intl.NumberFormat().format(Math.round(num || 0)); },
         getSign(type) { return type === '支出' ? '-' : '+'; },
+        getCurrencySymbol(curr) { return curr === 'TWD' ? '$' : '¥'; }, // 新增幣別符號判斷
         getSignClass(type) { return type === '支出' ? 'text-gray-600' : 'text-gray-400'; }
     }
 };
