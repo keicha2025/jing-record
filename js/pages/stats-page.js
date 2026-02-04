@@ -20,10 +20,34 @@ export const StatsPage = {
             </div>
 
             <div class="flex flex-col space-y-3 px-2">
-                <input v-if="dateMode === 'month'" type="month" v-model="selectedMonth" class="text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none text-gray-600">
-                <div v-else class="grid grid-cols-2 gap-3">
-                    <input type="date" v-model="startDate" class="text-[10px] bg-gray-50 px-2 py-1 rounded-lg outline-none text-gray-600">
-                    <input type="date" v-model="endDate" class="text-[10px] bg-gray-50 px-2 py-1 rounded-lg outline-none text-gray-600">
+                <!-- 專案模式切換 -->
+                <div class="flex items-center space-x-2 bg-gray-50 rounded-lg p-1">
+                     <button @click="filterMode = 'normal'" :class="filterMode === 'normal' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1 text-[9px] rounded-md transition-all">一般模式</button>
+                     <button @click="filterMode = 'project'" :class="filterMode === 'project' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1 text-[9px] rounded-md transition-all">專案分析</button>
+                </div>
+
+                <!-- 一般模式下的日期選擇與過濾 -->
+                <div v-show="filterMode === 'normal'" class="flex flex-col space-y-2">
+                   <input v-if="dateMode === 'month'" type="month" v-model="selectedMonth" class="text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none text-gray-600 border border-transparent focus:bg-white focus:border-gray-200 transition-all">
+                   <div v-else class="grid grid-cols-2 gap-3">
+                       <input type="date" v-model="startDate" class="text-[10px] bg-gray-50 px-2 py-1 rounded-lg outline-none text-gray-600">
+                       <input type="date" v-model="endDate" class="text-[10px] bg-gray-50 px-2 py-1 rounded-lg outline-none text-gray-600">
+                   </div>
+                   <!-- 排除專案支出選項 -->
+                   <div class="flex items-center space-x-2 px-1 pt-1">
+                       <div @click="excludeProjects = !excludeProjects" class="w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer" :class="excludeProjects ? 'bg-gray-700 border-gray-700' : 'bg-white border-gray-300'">
+                           <span v-if="excludeProjects" class="material-symbols-rounded text-white text-[10px]">check</span>
+                       </div>
+                       <span @click="excludeProjects = !excludeProjects" class="text-[10px] text-gray-400 cursor-pointer">不包含專案/旅行花費</span>
+                   </div>
+                </div>
+
+                <!-- 專案模式下的專案選擇 -->
+                 <div v-show="filterMode === 'project'" class="w-full">
+                    <select v-model="selectedProjectId" class="w-full text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none text-gray-600 border border-transparent focus:bg-white focus:border-gray-200 transition-all">
+                        <option value="" disabled>請選擇專案</option>
+                        <option v-for="p in activeProjects" :key="p.id" :value="p.id">{{ p.name }} ({{p.status}})</option>
+                    </select>
                 </div>
             </div>
 
@@ -89,7 +113,7 @@ export const StatsPage = {
         </div>
     </section>
     `,
-    props: ['transactions', 'categories', 'fxRate', 'paymentMethods'],
+    props: ['transactions', 'categories', 'fxRate', 'paymentMethods', 'projects'],
     data() {
         const now = new Date();
         return {
@@ -101,17 +125,40 @@ export const StatsPage = {
             isMyShareOnly: true,
             chartInstance: null,
             centerAmount: 0,
-            centerLabel: 'TOTAL'
+            centerLabel: 'TOTAL',
+            filterMode: 'normal', // normal, project
+            selectedProjectId: '',
+            excludeProjects: false
         };
     },
     computed: {
         getCurrencySymbol() { return this.baseCurrency === 'JPY' ? '¥' : '$'; },
+        activeProjects() { return (this.projects || []).filter(p => true); }, // 顯示所有專案供分析
         filteredList() {
             return this.transactions.filter(t => {
                 if (t.type !== '支出') return false;
-                const tDate = t.spendDate.split(' ')[0].replace(/\//g, '-');
-                if (this.dateMode === 'month') return tDate.startsWith(this.selectedMonth);
-                return tDate >= this.startDate && tDate <= this.endDate;
+
+                if (this.filterMode === 'project') {
+                    if (!this.selectedProjectId) return false;
+                    return t.projectId === this.selectedProjectId;
+                } else {
+                    // 一般模式：排除有專案ID的支出 (如果希望一般模式純粹看日常) -> 根據需求，這裡先做「包含/不含」的開關可能比較複雜，
+                    // 暫時邏輯：一般模式只看時間，但額外過濾掉標記為專案的？或者全看？
+                    // 根據需求描述：stas頁面可以「包含/不含旅遊花費」。
+                    // 簡單解法：在一般模式下，我們預設「包含所有」，但若用戶想排除旅遊，可能需要另一個開關。
+                    // 為了簡化 UI，這裡先設為「一般模式 = 依照時間篩選的所有支出」。
+                    // 如果用戶想要「不含旅遊花費」，通常是因為旅遊花費會拉高單月支出。
+                    // 讓我們加一個簡單的 checkbox 在一般模式: "排除專案支出"
+
+                    const tDate = t.spendDate.split(' ')[0].replace(/\//g, '-');
+                    const timeMatch = (this.dateMode === 'month') ? tDate.startsWith(this.selectedMonth) : (tDate >= this.startDate && tDate <= this.endDate);
+                    if (!timeMatch) return false;
+
+                    // 排除專案支出
+                    if (this.excludeProjects && t.projectId) return false;
+
+                    return true;
+                }
             });
         },
         processedList() {
@@ -150,7 +197,7 @@ export const StatsPage = {
             if (this.dateMode === 'month') {
                 const parts = this.selectedMonth.split('-');
                 const now = new Date();
-                const isCurrent = (now.getFullYear() === parseInt(parts[0]) && (now.getMonth()+1) === parseInt(parts[1]));
+                const isCurrent = (now.getFullYear() === parseInt(parts[0]) && (now.getMonth() + 1) === parseInt(parts[1]));
                 days = isCurrent ? now.getDate() : new Date(parts[0], parts[1], 0).getDate();
             } else {
                 const diff = new Date(this.endDate) - new Date(this.startDate);
@@ -218,7 +265,8 @@ export const StatsPage = {
                 options: {
                     responsive: true, maintainAspectRatio: false, cutout: '80%',
                     plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 20, font: { size: 10, weight: '300' } },
+                        legend: {
+                            position: 'bottom', labels: { boxWidth: 12, padding: 20, font: { size: 10, weight: '300' } },
                             onClick: (e, legendItem, legend) => {
                                 legend.chart.toggleDataVisibility(legendItem.index);
                                 legend.chart.update();
@@ -260,6 +308,9 @@ export const StatsPage = {
         selectedMonth() { this.$nextTick(() => this.renderChart()); },
         startDate() { this.$nextTick(() => this.renderChart()); },
         endDate() { this.$nextTick(() => this.renderChart()); },
+        filterMode() { this.$nextTick(() => this.renderChart()); },
+        excludeProjects() { this.$nextTick(() => this.renderChart()); },
+        selectedProjectId() { this.$nextTick(() => this.renderChart()); },
         transactions: { handler() { this.$nextTick(() => this.renderChart()); }, deep: true }
     }
 };

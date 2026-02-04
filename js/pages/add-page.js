@@ -112,15 +112,38 @@ export const AddPage = {
                 </div>
             </div>
 
+            <!-- 7. 進階功能 (專案/旅行) -->
+            <div class="pt-2 border-t border-gray-50">
+                <button @click="isAdvancedOpen = !isAdvancedOpen" class="w-full flex items-center justify-between text-[10px] text-gray-400 uppercase tracking-widest py-2">
+                    <span>進階選項 (旅行計畫)</span>
+                    <span class="material-symbols-rounded text-sm transform transition-transform" :class="{'rotate-180': isAdvancedOpen}">expand_more</span>
+                </button>
+                <!-- 進階內容 -->
+                <div v-show="isAdvancedOpen" class="pt-2 pb-4 space-y-4 animate-in slide-in-from-top-2">
+                     <div class="space-y-2">
+                         <label class="text-[10px] text-gray-400 uppercase tracking-widest px-2 font-medium">關聯旅行計畫</label>
+                         <div class="flex flex-wrap gap-2 px-2">
+                            <button @click="form.projectId = ''" 
+                                    :class="form.projectId === '' ? 'bg-[#4A4A4A] text-white' : 'bg-gray-50 text-gray-400'" 
+                                    class="px-4 py-1.5 rounded-full text-[10px]">無</button>
+                            <button v-for="p in activeProjects" :key="p.id" 
+                                    @click="form.projectId = p.id"
+                                    :class="form.projectId === p.id ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-500'" 
+                                    class="px-4 py-1.5 rounded-full text-[10px] border border-transparent">{{ p.name }}</button>
+                         </div>
+                     </div>
+                </div>
+            </div>
+
             <button @click.stop="prepareAndSubmit" :disabled="loading" class="w-full bg-[#4A4A4A] text-white py-5 rounded-2xl text-[10px] font-medium tracking-[0.4em] uppercase shadow-lg disabled:bg-gray-200">
                 Confirm & Save
             </button>
         </div>
     </section>
     `,
-    props: ['form', 'categories', 'friends', 'loading', 'paymentMethods'],
+    props: ['form', 'categories', 'friends', 'loading', 'paymentMethods', 'projects'],
     data() {
-        return { isAddingFriend: false, addFriendTarget: '', newFriendName: '', selectedFriends: [], splitMode: 'auto' };
+        return { isAddingFriend: false, addFriendTarget: '', newFriendName: '', selectedFriends: [], splitMode: 'auto', isAdvancedOpen: false };
     },
     computed: {
         filteredCategories() { return this.categories.filter(c => c.type === (this.form.type === '收款' ? '支出' : this.form.type)); },
@@ -128,11 +151,15 @@ export const AddPage = {
             if (!this.form.amount) return 0;
             const totalPeople = (this.form.isSplit ? this.selectedFriends.length : 0) + 1;
             return Math.round(this.form.amount / totalPeople);
+        },
+        activeProjects() {
+            // 只顯示 Active 的專案
+            return (this.projects || []).filter(p => p.status !== 'Archived' && p.status !== 'archived');
         }
     },
     methods: {
         formatNumber(num) { return new Intl.NumberFormat().format(num); },
-        triggerAddFriend(target) { 
+        triggerAddFriend(target) {
             // 如果點擊的是同一個 target，則切換開關；否則切換到新 target 並開啟
             if (this.addFriendTarget === target) {
                 this.isAddingFriend = !this.isAddingFriend;
@@ -166,7 +193,7 @@ export const AddPage = {
             if (!this.form.paymentMethod) { alert('請選擇支付方式'); return; }
             if (this.form.type !== '收款' && !this.form.categoryId) { alert('請選擇分類'); return; }
             if (this.form.isSplit && this.selectedFriends.length === 0) { alert('已開啟分帳模式，請至少選擇一位朋友'); return; }
-            
+
             const share = this.splitMode === 'auto' ? this.autoShareValue : this.form.personalShare;
             let debt = 0;
             if (this.form.type === '支出') {

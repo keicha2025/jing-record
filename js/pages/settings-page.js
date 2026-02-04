@@ -23,7 +23,23 @@ export const SettingsPage = {
             </button>
         </div>
 
-        <!-- 2. 朋友名單管理 -->
+        <!-- 2. 旅行計畫 (Projects) -->
+        <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
+            <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2">Project / Trips</h3>
+            <div class="space-y-3">
+                 <div v-if="!projects || projects.length === 0" class="text-xs text-gray-300 px-2">無專案</div>
+                 <div v-for="p in projects" :key="p.id" class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-medium text-gray-700">{{ p.name }}</span>
+                        <span class="text-[9px] text-gray-400">{{ p.startDate }} ~ {{ p.endDate }}</span>
+                    </div>
+                    <span :class="p.status === 'Active' ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-500'" class="text-[9px] px-2 py-1 rounded-full">{{ p.status }}</span>
+                 </div>
+                 <p class="text-[9px] text-gray-300 px-2 pt-1">*請至 Google Sheets 新增或修改專案</p>
+            </div>
+        </div>
+
+        <!-- 3. 朋友名單管理 -->
         <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
             <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2">Friends List</h3>
             <div class="grid grid-cols-1 divide-y divide-gray-50">
@@ -40,7 +56,7 @@ export const SettingsPage = {
             </div>
         </div>
 
-        <!-- 3. 外部連結 -->
+        <!-- 4. 外部連結 -->
         <div class="px-2 space-y-3">
             <a :href="sheetUrl" target="_blank" class="flex items-center justify-between p-5 bg-white rounded-2xl muji-shadow border border-gray-50 active:scale-95 transition-all">
                 <div class="flex items-center space-x-3">
@@ -57,7 +73,7 @@ export const SettingsPage = {
         </div>
     </section>
     `,
-    props: ['config', 'friends'],
+    props: ['config', 'friends', 'projects'],
     data() {
         return {
             localConfig: { user_name: '', fx_rate: 0.22 },

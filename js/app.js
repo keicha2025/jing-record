@@ -10,13 +10,13 @@ import { OverviewPage } from "./pages/overview-page.js";
 const { createApp, ref, onMounted, computed } = window.Vue;
 
 createApp({
-    components: { 
+    components: {
         'overview-page': OverviewPage,
-        'add-page': AddPage, 
-        'edit-page': EditPage, 
-        'history-page': HistoryPage, 
-        'stats-page': StatsPage, 
-        'settings-page': SettingsPage 
+        'add-page': AddPage,
+        'edit-page': EditPage,
+        'history-page': HistoryPage,
+        'stats-page': StatsPage,
+        'settings-page': SettingsPage
     },
     setup() {
         const getLocalISOString = () => {
@@ -30,6 +30,7 @@ createApp({
         const categories = ref([]);
         const friends = ref([]);
         const paymentMethods = ref([]);
+        const projects = ref([]);
         const transactions = ref([]);
         const fxRate = ref(CONFIG.TWD_FIXED_RATE);
         const stats = ref({ monthlyLifeTotal: 0, allOneTimeTotal: 0, debtTotal: 0, totalInvestment: 0 });
@@ -40,7 +41,9 @@ createApp({
         const form = ref({
             type: '支出', currency: 'JPY', amount: '', spendDate: getLocalISOString(),
             categoryId: 'cat_001', name: '', note: '', paymentMethod: '',
-            isOneTime: false, isSplit: false, friendName: '', personalShare: 0, payer: '我', isAlreadyPaid: false, action: 'add'
+            isOneTime: false, isSplit: false, friendName: '', personalShare: 0, payer: '我', isAlreadyPaid: false,
+            projectId: '', // 【新增】關聯專案ID
+            action: 'add'
         });
 
         const filteredTransactions = computed(() => {
@@ -67,6 +70,7 @@ createApp({
                 categories.value = data.categories || [];
                 friends.value = data.friends || [];
                 paymentMethods.value = data.paymentMethods || [];
+                projects.value = data.projects || []; // 【新增】讀取 Projects
                 transactions.value = data.transactions || [];
                 if (data.stats) stats.value = data.stats;
                 if (data.config) {
@@ -81,8 +85,8 @@ createApp({
             if (!dataToSave.amount || !dataToSave.name) return;
             loading.value = true;
             try {
-                const payload = { 
-                    ...dataToSave, 
+                const payload = {
+                    ...dataToSave,
                     amountJPY: dataToSave.currency === 'JPY' ? dataToSave.amount : dataToSave.amount / fxRate.value,
                     amountTWD: dataToSave.currency === 'TWD' ? dataToSave.amount : dataToSave.amount * fxRate.value
                 };
@@ -94,7 +98,7 @@ createApp({
         };
 
         const handleDelete = async (row) => {
-            if(!confirm("確定要永久刪除此筆資料嗎？")) return;
+            if (!confirm("確定要永久刪除此筆資料嗎？")) return;
             loading.value = true;
             try {
                 await API.saveTransaction({ action: 'delete', row: row });
@@ -105,42 +109,49 @@ createApp({
         };
 
         const resetForm = () => {
-            form.value = { type: '支出', currency: 'JPY', amount: '', spendDate: getLocalISOString(), categoryId: 'cat_001', name: '', note: '', paymentMethod: '', isOneTime: false, isSplit: false, friendName: '', personalShare: 0, payer: '我', isAlreadyPaid: false, action: 'add' };
+            form.value = {
+                type: '支出', currency: 'JPY', amount: '', spendDate: getLocalISOString(),
+                categoryId: 'cat_001', name: '', note: '', paymentMethod: '',
+                isOneTime: false, isSplit: false, friendName: '', personalShare: 0, payer: '我', isAlreadyPaid: false,
+                projectId: '', // reset projectId
+                action: 'add'
+            };
             editForm.value = null;
         };
 
         const handleEditItem = (item) => {
             const formattedDate = item.spendDate ? item.spendDate.replace(/\//g, "-").replace(" ", "T") : getLocalISOString();
             const hasSplit = item.friendName && item.friendName.trim() !== "";
-            editForm.value = JSON.parse(JSON.stringify({ 
-                ...item, 
+            editForm.value = JSON.parse(JSON.stringify({
+                ...item,
                 spendDate: formattedDate,
-                amount: (item.originalCurrency === 'TWD' ? item.amountTWD : item.amountJPY), 
-                currency: item.originalCurrency || 'JPY', 
+                amount: (item.originalCurrency === 'TWD' ? item.amountTWD : item.amountJPY),
+                currency: item.originalCurrency || 'JPY',
                 action: 'edit',
-                isSplit: hasSplit 
+                isSplit: hasSplit,
+                projectId: item.projectId || '' // load projectId
             }));
             currentTab.value = 'edit';
         };
 
         const getTabIcon = (t) => {
-            const icons = { overview:'dashboard', history:'list_alt', add:'add', stats:'bar_chart', settings:'settings' };
+            const icons = { overview: 'dashboard', history: 'list_alt', add: 'add', stats: 'bar_chart', settings: 'settings' };
             return icons[t] || 'help';
         };
 
         onMounted(loadData);
 
-        return { 
-            currentTab, loading, categories, friends, paymentMethods, transactions, filteredTransactions, historyFilter, form, editForm, stats, systemConfig, fxRate, 
-            handleSubmit, handleDelete, handleEditItem, 
-            formatNumber: (n) => new Intl.NumberFormat().format(Math.round(n || 0)), 
-            getTabIcon, 
-            toggleCurrency: () => form.value.currency = (form.value.currency === 'JPY' ? 'TWD' : 'JPY'), 
-            handleAddFriendToList: (n) => { if(!friends.value.includes(n)) friends.value.push(n) },
-            resetForm, 
-            handleDrillDown: (id) => { historyFilter.value = {mode:'all', categoryId:id, friendName:null, currency:null}; currentTab.value='history'; }, 
-            handleUpdateConfig: async (c) => { loading.value=true; await API.saveTransaction({action:'updateConfig', ...c}); await loadData(); }, 
-            handleViewFriend: (n) => { historyFilter.value = {mode:'all', categoryId:null, friendName:n, currency:null}; currentTab.value='history'; } 
+        return {
+            currentTab, loading, categories, friends, paymentMethods, projects, transactions, filteredTransactions, historyFilter, form, editForm, stats, systemConfig, fxRate,
+            handleSubmit, handleDelete, handleEditItem,
+            formatNumber: (n) => new Intl.NumberFormat().format(Math.round(n || 0)),
+            getTabIcon,
+            toggleCurrency: () => form.value.currency = (form.value.currency === 'JPY' ? 'TWD' : 'JPY'),
+            handleAddFriendToList: (n) => { if (!friends.value.includes(n)) friends.value.push(n) },
+            resetForm,
+            handleDrillDown: (id) => { historyFilter.value = { mode: 'all', categoryId: id, friendName: null, currency: null }; currentTab.value = 'history'; },
+            handleUpdateConfig: async (c) => { loading.value = true; await API.saveTransaction({ action: 'updateConfig', ...c }); await loadData(); },
+            handleViewFriend: (n) => { historyFilter.value = { mode: 'all', categoryId: null, friendName: n, currency: null }; currentTab.value = 'history'; }
         };
     }
 }).mount('#app');
