@@ -1,4 +1,5 @@
 import { CONFIG } from '../config.js';
+import { API } from '../api.js';
 
 export const SettingsPage = {
     template: `
@@ -25,7 +26,26 @@ export const SettingsPage = {
 
         <!-- 2. 旅行計畫 (Projects) -->
         <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
-            <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2">Project / Trips</h3>
+            <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2 flex justify-between items-center">
+                <span>Project / Trips</span>
+                <button @click="isAddingProject = !isAddingProject" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <span class="material-symbols-rounded text-lg">{{ isAddingProject ? 'remove' : 'add' }}</span>
+                </button>
+            </h3>
+            
+            <!-- 新增專案表單 -->
+            <div v-if="isAddingProject" class="bg-gray-50 p-4 rounded-xl space-y-3 animate-in slide-in-from-top-2">
+                <input type="text" v-model="newProject.name" placeholder="Name (e.g. 京都之旅)" class="w-full bg-white px-3 py-2 rounded-lg text-xs outline-none">
+                <div class="flex space-x-2">
+                    <input type="date" v-model="newProject.startDate" class="flex-1 bg-white px-3 py-2 rounded-lg text-xs outline-none text-gray-500">
+                    <span class="text-gray-300 self-center">~</span>
+                    <input type="date" v-model="newProject.endDate" class="flex-1 bg-white px-3 py-2 rounded-lg text-xs outline-none text-gray-500">
+                </div>
+                <button @click="createProject" :disabled="projectSaving" class="w-full bg-gray-800 text-white py-2 rounded-lg text-[10px] tracking-widest uppercase">
+                    {{ projectSaving ? 'Adding...' : 'Add Project' }}
+                </button>
+            </div>
+
             <div class="space-y-3">
                  <div v-if="!projects || projects.length === 0" class="text-xs text-gray-300 px-2">無專案</div>
                  <div v-for="p in projects" :key="p.id" class="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
@@ -78,7 +98,10 @@ export const SettingsPage = {
         return {
             localConfig: { user_name: '', fx_rate: 0.22 },
             saving: false,
-            sheetUrl: CONFIG.SPREADSHEET_URL // 從 config.js 讀取網址
+            sheetUrl: CONFIG.SPREADSHEET_URL, // 從 config.js 讀取網址
+            isAddingProject: false,
+            projectSaving: false,
+            newProject: { name: '', startDate: '', endDate: '' }
         };
     },
     methods: {
@@ -88,6 +111,26 @@ export const SettingsPage = {
                 this.$emit('update-config', this.localConfig);
             } finally {
                 this.saving = false;
+            }
+        },
+        async createProject() {
+            if (!this.newProject.name) return alert("Please enter a name");
+            this.projectSaving = true;
+            try {
+                await API.saveTransaction({
+                    action: 'updateProject',
+                    name: this.newProject.name,
+                    startDate: this.newProject.startDate,
+                    endDate: this.newProject.endDate
+                });
+                this.isAddingProject = false;
+                this.newProject = { name: '', startDate: '', endDate: '' };
+                alert("Project Added! Please refresh page to see changes.");
+                // 理想情況下應該重新 fetch，但這裡暫時重整或等 Parent 更新
+            } catch (e) {
+                alert("Error: " + e.toString());
+            } finally {
+                this.projectSaving = false;
             }
         }
     },

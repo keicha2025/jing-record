@@ -157,8 +157,44 @@ export const AddPage = {
             return (this.projects || []).filter(p => p.status !== 'Archived' && p.status !== 'archived');
         }
     },
+    watch: {
+        'form.spendDate': {
+            handler(newVal) {
+                if (!newVal) return;
+                this.autoSelectProject(newVal);
+            },
+            immediate: true
+        }
+    },
     methods: {
+        autoSelectProject(dateStr) {
+            // dateStr format: YYYY-MM-DDTHH:mm
+            if (!dateStr || !this.projects) return;
+            const date = dateStr.split('T')[0]; // Get YYYY-MM-DD
+
+            // 尋找符合日期的專案
+            const match = this.activeProjects.find(p => {
+                if (!p.startDate || !p.endDate) return false;
+                return date >= p.startDate && date <= p.endDate;
+            });
+
+            // 若找到且目前沒選 (或是自動模式)，則選取
+            // 這裡採取稍微積極的策略：只要日期變動且符合專案，就切過去 (使用者隨時可切回無)
+            if (match) {
+                // 為避免干擾，僅當目前為空或使用者更剛好切換到該區間時才變更
+                // 但使用者要求「自動套用」，所以這裡直接設定
+                // 但為了允許「取消選取」，我們稍微做個判斷：如果是剛剛被取消的專案就不再選？
+                // 簡化實作：直接選取。若使用者想取消，選「無」即可。
+                // 只有當新匹配的專案跟現在的不一樣時才換，避免重複賦值
+                if (this.form.projectId !== match.id) {
+                    this.form.projectId = match.id;
+                    // 自動展開進階選項讓使用者知道發生了什麼
+                    // this.isAdvancedOpen = true; // 可選：是否要自動展開？有點干擾，先不要。
+                }
+            }
+        },
         formatNumber(num) { return new Intl.NumberFormat().format(num); },
+
         triggerAddFriend(target) {
             // 如果點擊的是同一個 target，則切換開關；否則切換到新 target 並開啟
             if (this.addFriendTarget === target) {

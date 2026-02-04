@@ -93,9 +93,42 @@ function doPost(e) {
     }
 
     // 處理專案新增/更新 (簡單實作)
+    // 處理專案新增/更新
     if (params.action === 'updateProject') {
-       // 未來實作 Project 新增/修改邏輯，目前先保留
-       return ContentService.createTextOutput(JSON.stringify({ status: "success" })).setMimeType(ContentService.MimeType.JSON);
+       const projectSheet = ss.getSheetByName("Projects");
+       if (!projectSheet) {
+         // 若無此表則自動建立 (通常應已有，但防呆)
+         const pSheet = ss.insertSheet("Projects");
+         pSheet.appendRow(["ID", "Name", "StartDate", "EndDate", "Status"]);
+       }
+       const pSheet = ss.getSheetByName("Projects");
+       
+       const newRow = [
+         params.id || "proj_" + new Date().getTime(),
+         params.name,
+         params.startDate,
+         params.endDate,
+         params.status || "Active"
+       ];
+
+       // 檢查是否為編輯現有
+       let isEdit = false;
+       if (params.id) {
+         const data = pSheet.getDataRange().getValues();
+         for (let i = 1; i < data.length; i++) {
+           if (data[i][0] == params.id) {
+             pSheet.getRange(i + 1, 1, 1, 5).setValues([newRow]);
+             isEdit = true;
+             break;
+           }
+         }
+       }
+       
+       if (!isEdit) {
+         pSheet.appendRow(newRow);
+       }
+
+       return ContentService.createTextOutput(JSON.stringify({ status: "success", project: newRow })).setMimeType(ContentService.MimeType.JSON);
     }
 
     // 原有的刪除邏輯
