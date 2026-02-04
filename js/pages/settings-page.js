@@ -20,13 +20,12 @@ export const SettingsPage = {
             </div>
 
             <button @click="saveSettings" :disabled="saving" class="w-full bg-[#4A4A4A] text-white py-4 rounded-2xl text-[10px] font-medium tracking-[0.3em] uppercase active:scale-95 transition-all">
-                {{ saving ? 'Saving...' : 'Save Settings' }}
+                {{ saving ? 'Saving...' : '更新紀錄' }}
             </button>
         </div>
 
         <!-- 2. 旅行計畫 (Projects) -->
         <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
-            <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2 flex justify-between items-center">
             <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2 flex justify-between items-center">
                 <span>旅行計畫</span>
                 <button @click="isAddingProject = !isAddingProject" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -37,10 +36,10 @@ export const SettingsPage = {
             <!-- 新增專案表單 -->
             <div v-if="isAddingProject" class="bg-gray-50 p-4 rounded-xl space-y-3 animate-in slide-in-from-top-2">
                 <input type="text" v-model="newProject.name" placeholder="計畫名稱 (例如: 京都之旅)" class="w-full bg-white px-3 py-2 rounded-lg text-xs outline-none">
-                <div class="flex space-x-2">
-                    <input type="date" v-model="newProject.startDate" class="flex-1 bg-white px-3 py-2 rounded-lg text-xs outline-none text-gray-500">
-                    <span class="text-gray-300 self-center">~</span>
-                    <input type="date" v-model="newProject.endDate" class="flex-1 bg-white px-3 py-2 rounded-lg text-xs outline-none text-gray-500">
+                <div class="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
+                    <input type="date" v-model="newProject.startDate" class="bg-white px-3 py-2 rounded-lg text-xs outline-none text-gray-500 w-full">
+                    <span class="text-gray-300">~</span>
+                    <input type="date" v-model="newProject.endDate" class="bg-white px-3 py-2 rounded-lg text-xs outline-none text-gray-500 w-full">
                 </div>
                 <button @click="createProject" :disabled="projectSaving" class="w-full bg-gray-800 text-white py-2 rounded-lg text-[10px] tracking-widest uppercase">
                     {{ projectSaving ? '新增中...' : '新增計畫' }}
@@ -50,13 +49,13 @@ export const SettingsPage = {
             <div class="space-y-3">
                  <div v-if="!projects || projects.length === 0" class="text-xs text-gray-300 px-2">無專案</div>
                  <div v-for="p in projects" :key="p.id" 
-                      @click="viewProjectDetail(p)"
+                      @click="$emit('view-project', p)"
                       class="flex justify-between items-center p-3 bg-gray-50 rounded-xl active:bg-gray-100 transition-colors cursor-pointer">
                     <div class="flex flex-col">
                         <span class="text-xs font-medium text-gray-700">{{ p.name }}</span>
                         <span class="text-[9px] text-gray-400">{{ p.startDate }} ~ {{ p.endDate }}</span>
                     </div>
-                    <span :class="p.status === 'Active' ? 'bg-[#4A4A4A] text-white' : 'bg-gray-200 text-gray-500'" class="text-[9px] px-2 py-1 rounded-full">{{ p.status }}</span>
+                    <span :class="p.status === 'Active' ? 'bg-[#4A4A4A] text-white' : 'bg-gray-200 text-gray-500'" class="text-[9px] px-2 py-1 rounded-full">{{ getStatusLabel(p.status) }}</span>
                  </div>
             </div>
         </div>
@@ -224,7 +223,11 @@ export const SettingsPage = {
             // Emit dummy update to force reload in parent
             this.$emit('update-config', this.localConfig);
         },
-        formatNumber(num) { return new Intl.NumberFormat().format(Math.round(num || 0)); }
+        formatNumber(num) { return new Intl.NumberFormat().format(Math.round(num || 0)); },
+        getStatusLabel(status) {
+            const map = { 'Active': '進行中', 'Archived': '已封存', 'Planned': '計劃中' };
+            return map[status] || status;
+        }
     },
     mounted() {
         this.localConfig = { ...this.config };

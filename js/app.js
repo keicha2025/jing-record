@@ -5,6 +5,7 @@ import { EditPage } from './pages/edit-page.js';
 import { HistoryPage } from './pages/history-page.js';
 import { StatsPage } from './pages/stats-page.js';
 import { SettingsPage } from './pages/settings-page.js';
+import { OverviewPage } from "./pages/overview-page.js";
 import { ProjectDetailPage } from './pages/project-detail-page.js';
 
 const { createApp, ref, onMounted, computed } = window.Vue;
@@ -71,15 +72,25 @@ createApp({
             if (filter.friendName) list = list.filter(t => t.friendName && (t.friendName.includes(filter.friendName) || t.payer === filter.friendName));
             if (filter.currency) list = list.filter(t => t.originalCurrency === filter.currency);
 
-            // Keyword Search
+            // Keyword Search (Enhanced)
             if (filter.keyword) {
                 const k = filter.keyword.toLowerCase();
-                list = list.filter(t =>
-                    (t.name && t.name.toLowerCase().includes(k)) ||
-                    (t.note && t.note.toLowerCase().includes(k)) ||
-                    (t.friendName && t.friendName.toLowerCase().includes(k)) ||
-                    (t.paymentMethod && t.paymentMethod.toLowerCase().includes(k))
-                );
+                list = list.filter(t => {
+                    // Pre-fetch names for search
+                    const cat = categories.value.find(c => c.id === t.categoryId);
+                    const catName = cat ? cat.name.toLowerCase() : '';
+
+                    const pm = paymentMethods.value.find(p => p.id === t.paymentMethod);
+                    const pmName = pm ? pm.name.toLowerCase() : (t.paymentMethod || '').toLowerCase();
+
+                    return (
+                        (t.name && t.name.toLowerCase().includes(k)) ||
+                        (t.note && t.note.toLowerCase().includes(k)) ||
+                        (t.friendName && t.friendName.toLowerCase().includes(k)) ||
+                        catName.includes(k) ||
+                        pmName.includes(k)
+                    );
+                });
             }
 
             return list;

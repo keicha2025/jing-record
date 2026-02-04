@@ -20,9 +20,6 @@ export const ProjectDetailPage = {
                 <button v-if="!isEditing" @click="isEditing = true" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <span class="material-symbols-rounded text-lg">edit</span>
                 </button>
-                <button v-else @click="saveProject" :disabled="saving" class="text-gray-800 font-bold text-xs uppercase disabled:text-gray-300">
-                    {{ saving ? 'Saving...' : 'Save' }}
-                </button>
             </div>
 
             <!-- Read Only View -->
@@ -56,9 +53,11 @@ export const ProjectDetailPage = {
                     <input type="text" v-model="editForm.name" class="w-full bg-gray-50 px-5 py-4 rounded-2xl text-sm outline-none text-gray-700 placeholder-gray-300 transition-all focus:bg-white focus:shadow-sm border border-transparent focus:border-gray-100">
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-2">
-                        <label class="text-[10px] text-gray-400 uppercase tracking-widest font-medium ml-2">開始日期</label>
+                <!-- 搜尋與篩選列 -->
+        <div class="space-y-2">
+            <div class="flex space-x-2">
+                <div class="flex-1 bg-white rounded-xl flex items-center px-3 py-2">
+                    <label class="text-[10px] text-gray-400 uppercase tracking-widest font-medium ml-2">開始日期</label>
                         <input type="date" v-model="editForm.startDate" class="w-full bg-gray-50 px-4 py-3 rounded-2xl text-xs outline-none text-gray-600">
                     </div>
                     <div class="space-y-2">
@@ -69,8 +68,8 @@ export const ProjectDetailPage = {
 
                 <div class="space-y-2">
                      <label class="text-[10px] text-gray-400 uppercase tracking-widest font-medium ml-2">狀態</label>
-                     <div class="grid grid-cols-3 gap-2">
-                        <button v-for="status in ['Active', 'Planned', 'Archived']" :key="status"
+                     <div class="grid grid-cols-2 gap-2">
+                        <button v-for="status in ['Active', 'Archived']" :key="status"
                                 @click="editForm.status = status"
                                 :class="editForm.status === status ? 'bg-[#4A4A4A] text-white shadow-md' : 'bg-gray-50 text-gray-400'"
                                 class="py-3 rounded-xl text-[10px] transition-all font-medium">
@@ -79,8 +78,10 @@ export const ProjectDetailPage = {
                      </div>
                 </div>
                 
-                <div class="pt-4">
-                    <button @click="isEditing = false" class="w-full py-4 text-[10px] text-gray-400 tracking-widest uppercase hover:text-gray-600">取消編輯</button>
+                <div class="space-y-4 pt-6">
+                    <button @click="saveProject" :disabled="saving" class="w-full bg-[#4A4A4A] text-white py-4 rounded-2xl text-[10px] font-medium tracking-[0.3em] uppercase active:scale-95 transition-all">
+                {{ saving ? 'Saving...' : '更新紀錄' }}
+            </button> <button @click="isEditing = false" class="w-full py-2 text-[10px] text-gray-400 tracking-widest uppercase hover:text-gray-600">取消編輯</button>
                 </div>
             </div>
         </div>
@@ -129,7 +130,7 @@ export const ProjectDetailPage = {
     methods: {
         formatNumber(num) { return new Intl.NumberFormat().format(Math.round(num || 0)); },
         getStatusLabel(status) {
-            const map = { 'Active': '進行中', 'Planned': '計劃中', 'Archived': '已歸檔' };
+            const map = { 'Active': '進行中', 'Archived': '已封存' };
             return map[status] || status;
         },
         async saveProject() {

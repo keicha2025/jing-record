@@ -52,7 +52,7 @@
                 @go-to-history="historyFilter = { mode: $event.mode, categoryId: null, friendName: null, currency: $event.currency }; currentTab = 'history'"></overview-page>
 
             <history-page v-if="currentTab === 'history'" :transactions="filteredTransactions" :categories="categories"
-                :payment-methods="paymentMethods" @edit-item="handleEditItem"
+                :payment-methods="paymentMethods" :projects="projects" @edit-item="handleEditItem"
                 @update-filter="Object.assign(historyFilter, $event)"></history-page>
 
             <add-page v-if="currentTab === 'add'" :form="form" :categories="categories"

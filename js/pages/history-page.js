@@ -2,11 +2,12 @@ export const HistoryPage = {
     template: `
     <section class="space-y-4 py-4 animate-in fade-in pb-24">
         <!-- 搜尋與篩選列 -->
-        <div class="sticky top-0 bg-[#F7F7F7] z-10 pb-2 space-y-2">
+        <!-- 搜尋與篩選列 -->
+        <div class="space-y-2">
             <div class="flex space-x-2">
-                <div class="flex-1 bg-white rounded-xl flex items-center px-3 py-2 border border-gray-50 shadow-sm">
+                <div class="flex-1 bg-white rounded-xl flex items-center px-3 py-2">
                     <span class="material-symbols-rounded text-gray-300 text-lg">search</span>
-                    <input type="text" v-model="localFilter.keyword" placeholder="搜尋名稱、備註、朋友..." class="w-full text-xs ml-2 outline-none text-gray-600 placeholder-gray-300">
+                    <input type="text" v-model="localFilter.keyword" class="w-full text-xs ml-2 outline-none text-gray-600 placeholder-gray-300">
                 </div>
                 <!-- 篩選器切換 -->
                 <div class="relative">
@@ -43,7 +44,7 @@ export const HistoryPage = {
                             <span class="text-gray-300">{{ item.spendDate.split('T')[0] }} · {{ getPaymentName(item.paymentMethod) }}</span>
                             <span v-if="item.payer !== '我' && item.type === '支出'" class="bg-gray-100 text-gray-500 px-1.5 rounded">{{ item.payer }} 付款</span>
                             <span v-if="item.type === '收款'" class="bg-gray-100 text-gray-400 px-1.5 rounded">{{ item.friendName }} 還款</span>
-                            <span v-if="item.projectId" class="text-blue-400 ml-1">#專案</span>
+                            <span v-if="item.projectId" class="text-gray-300">{{ getProjectName(item.projectId) }}</span>
                         </div>
                     </div>
                 </div>
@@ -59,7 +60,7 @@ export const HistoryPage = {
         </div>
     </section>
     `,
-    props: ['transactions', 'categories', 'paymentMethods'],
+    props: ['transactions', 'categories', 'paymentMethods', 'projects'],
     data() {
         return {
             localFilter: { keyword: '', mode: 'all' }
@@ -97,6 +98,11 @@ export const HistoryPage = {
     },
     methods: {
         getPaymentName(id) { const pm = this.paymentMethods.find(p => p.id === id); return pm ? pm.name : id; },
+        getProjectName(id) {
+            if (!this.projects) return '';
+            const p = this.projects.find(proj => proj.id === id);
+            return p ? p.name : '';
+        },
         getIcon(id) {
             const cat = this.categories.find(c => c.id === id);
             return cat ? cat.icon : 'payments';
@@ -107,8 +113,12 @@ export const HistoryPage = {
         getSignClass(type) { return type === '支出' ? 'text-gray-600' : 'text-gray-400'; },
         formatMonth(ym) {
             if (!ym) return '未知日期';
-            const [y, m] = ym.split('-');
-            return `${y}年 ${m}月`;
+            // ym is YYYY-MM
+            const parts = ym.split('-');
+            if (parts.length >= 2) {
+                return `${parts[0]}年 ${parts[1]}月`;
+            }
+            return ym;
         }
     }
 };

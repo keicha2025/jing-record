@@ -152,7 +152,7 @@ export const EditPage = {
                 </div>
                 <div v-else-if="currentProjectName" class="px-2 pt-2 border-t border-gray-50">
                     <span class="text-[10px] text-gray-400 uppercase tracking-widest block mb-1">旅行計畫</span>
-                    <span class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">{{ currentProjectName }}</span>
+                    <span class="bg-[#4A4A4A] text-white px-4 py-1.5 rounded-full text-[10px] inline-block">{{ currentProjectName }}</span>
                 </div>
             </div>
 

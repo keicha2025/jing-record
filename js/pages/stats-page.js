@@ -47,7 +47,7 @@ export const StatsPage = {
                  <div v-show="filterMode === 'project'" class="w-full pt-1">
                     <select v-model="selectedProjectId" class="w-full text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none text-gray-600 border border-transparent focus:bg-white focus:border-gray-200 transition-all">
                         <option value="">未選取專案 (合併統計)</option>
-                        <option v-for="p in activeProjects" :key="p.id" :value="p.id">{{ p.name }} ({{p.status}})</option>
+                        <option v-for="p in activeProjects" :key="p.id" :value="p.id">{{ p.name }} ({{ getStatusLabel(p.status) }})</option>
                     </select>
                 </div>
             </div>
@@ -241,6 +241,10 @@ export const StatsPage = {
     },
     methods: {
         getPaymentName(id) { const pm = this.paymentMethods.find(p => p.id === id); return pm ? pm.name : id; },
+        getStatusLabel(status) {
+            const map = { 'Active': '進行中', 'Archived': '已封存' };
+            return map[status] || status;
+        },
         formatNumber(num) { return new Intl.NumberFormat().format(Math.round(num || 0)); },
         getIntPercentage(val, total) { return total > 0 ? Math.round((val / total) * 100) : 0; },
         resetChartSelection() { this.centerLabel = 'TOTAL'; this.updateCenterFromVisible(this.chartInstance); },
