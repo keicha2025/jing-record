@@ -24,7 +24,7 @@ git commit -m "首次提交：專案初始化"
 
 ```bash
 # 建立連結 (請將 URL 換成您剛建立的倉庫網址)
-git remote add origin https://github.com/<您的GitHub帳號>/jing-record.git
+git remote add origin https://github.com/keicha2025/jing-record.git
 
 # 將程式碼上傳到 GitHub
 git push -u origin main
