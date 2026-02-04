@@ -118,6 +118,25 @@ export const EditPage = {
                         </div>
                     </div>
                 </div>
+                </div>
+
+                <!-- 7. 進階功能 (專案/旅行) -->
+                <div v-if="!isReadOnly" class="pt-4 border-t border-gray-50 space-y-2 px-2">
+                     <label class="text-[10px] text-gray-400 uppercase tracking-widest font-medium">關聯旅行計畫</label>
+                     <div class="flex flex-wrap gap-2">
+                        <button @click="form.projectId = ''" 
+                                :class="!form.projectId ? 'bg-[#4A4A4A] text-white' : 'bg-gray-50 text-gray-400'" 
+                                class="px-4 py-1.5 rounded-full text-[10px]">無</button>
+                        <button v-for="p in activeProjects" :key="p.id" 
+                                @click="form.projectId = p.id"
+                                :class="form.projectId === p.id ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-500'" 
+                                class="px-4 py-1.5 rounded-full text-[10px] border border-transparent">{{ p.name }}</button>
+                     </div>
+                </div>
+                <div v-else-if="currentProjectName" class="px-2 pt-2 border-t border-gray-50">
+                    <span class="text-[10px] text-gray-400 uppercase tracking-widest block mb-1">旅行計畫</span>
+                    <span class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md">{{ currentProjectName }}</span>
+                </div>
             </div>
 
             <!-- 7. 按鈕 -->
@@ -131,13 +150,25 @@ export const EditPage = {
         </div>
     </section>
     `,
-    props: ['form', 'categories', 'friends', 'loading', 'paymentMethods'],
+    props: ['form', 'categories', 'friends', 'loading', 'paymentMethods', 'projects'],
     data() { return { selectedFriends: [], isReadOnly: true }; },
     computed: {
         filteredCategories() { return this.categories.filter(c => c.type === (this.form.type === '收款' ? '支出' : this.form.type)); },
         autoShareValue() {
             const totalPeople = (this.selectedFriends ? this.selectedFriends.length : 0) + 1;
             return Math.round(this.form.amount / totalPeople);
+        },
+        activeProjects() {
+            // Edit Page: show active projects OR the one currently selected (even if archived)
+            const currentId = this.form.projectId;
+            return (this.projects || []).filter(p =>
+                (p.status !== 'Archived' && p.status !== 'archived') || p.id === currentId
+            );
+        },
+        currentProjectName() {
+            if (!this.form.projectId) return null;
+            const p = (this.projects || []).find(pr => pr.id === this.form.projectId);
+            return p ? p.name : this.form.projectId; // Fallback to ID if not found
         }
     },
     methods: {
