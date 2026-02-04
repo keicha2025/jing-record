@@ -116,7 +116,7 @@ export const AddPage = {
             <!-- 7. 旅行計畫模式 (取代原本的進階選項) -->
             <div class="pt-4 border-t border-gray-50 space-y-4">
                 <div class="flex items-center justify-between">
-                    <span class="text-xs text-gray-400 font-light">{{ form.projectId ? '旅行計畫模式 (開啟)' : '旅行計畫模式' }}</span>
+                    <span class="text-xs text-gray-400 font-light">旅行計畫模式</span>
                     <!-- Toggle Switch -->
                     <div class="w-10 h-5 rounded-full relative transition-colors cursor-pointer" 
                          :class="form.projectId ? 'bg-[#4A4A4A]' : 'bg-gray-200'"
@@ -176,6 +176,12 @@ export const AddPage = {
                 this.autoSelectProject(newVal);
             },
             immediate: true
+        },
+        'projects': {
+            handler() {
+                if (this.form.spendDate) this.autoSelectProject(this.form.spendDate);
+            },
+            deep: true
         }
     },
     methods: {

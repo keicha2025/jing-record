@@ -14,17 +14,17 @@ export const StatsPage = {
                 </div>
             </div>
 
-            <div class="flex bg-gray-50 rounded-xl p-1">
-                <button @click="dateMode = 'month'" :class="dateMode === 'month' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-2 text-[10px] tracking-widest rounded-lg transition-all font-medium uppercase">By Month</button>
-                <button @click="dateMode = 'range'" :class="dateMode === 'range' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-2 text-[10px] tracking-widest rounded-lg transition-all font-medium uppercase">Range</button>
+            <!-- 1. 頂部控制列 (Reordered) -->
+            <div class="flex bg-gray-50 rounded-xl p-1 mb-2">
+                 <button @click="filterMode = 'normal'" :class="filterMode === 'normal' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-2 text-[10px] tracking-widest rounded-lg transition-all font-medium">一般模式</button>
+                 <button @click="filterMode = 'project'" :class="filterMode === 'project' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-2 text-[10px] tracking-widest rounded-lg transition-all font-medium">專案分析</button>
             </div>
 
-            <div class="flex flex-col space-y-3 px-2">
-                <!-- 專案模式切換 -->
-                <div class="flex items-center space-x-2 bg-gray-50 rounded-lg p-1">
-                     <button @click="filterMode = 'normal'" :class="filterMode === 'normal' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1 text-[9px] rounded-md transition-all">一般模式</button>
-                     <button @click="filterMode = 'project'" :class="filterMode === 'project' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1 text-[9px] rounded-md transition-all">專案分析</button>
-                </div>
+            <!-- 時間切換 (只在一般模式顯示) -->
+            <div v-show="filterMode === 'normal'" class="flex bg-gray-50 rounded-xl p-1 mb-2">
+                <button @click="dateMode = 'month'" :class="dateMode === 'month' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1.5 text-[10px] tracking-widest rounded-lg transition-all font-medium">按月份</button>
+                <button @click="dateMode = 'range'" :class="dateMode === 'range' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1.5 text-[10px] tracking-widest rounded-lg transition-all font-medium">自訂區間</button>
+            </div>
 
                 <!-- 一般模式下的日期選擇與過濾 -->
                 <div v-show="filterMode === 'normal'" class="flex flex-col space-y-2">
@@ -43,9 +43,10 @@ export const StatsPage = {
                 </div>
 
                 <!-- 專案模式下的專案選擇 -->
-                 <div v-show="filterMode === 'project'" class="w-full">
+                <!-- 專案模式下的專案選擇 -->
+                 <div v-show="filterMode === 'project'" class="w-full pt-1">
                     <select v-model="selectedProjectId" class="w-full text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none text-gray-600 border border-transparent focus:bg-white focus:border-gray-200 transition-all">
-                        <option value="" disabled>請選擇專案</option>
+                        <option value="">未選取專案 (合併統計)</option>
                         <option v-for="p in activeProjects" :key="p.id" :value="p.id">{{ p.name }} ({{p.status}})</option>
                     </select>
                 </div>
@@ -139,7 +140,12 @@ export const StatsPage = {
                 if (t.type !== '支出') return false;
 
                 if (this.filterMode === 'project') {
-                    if (!this.selectedProjectId) return false;
+                    if (!this.selectedProjectId) {
+                        // 未選取專案 -> 顯示所有專案的合併統計資料 (即所有帶有 projectId 的支出)
+                        return !!t.projectId; // 只回傳有 projectId 的
+                        // 或者是否應該包含所有？"專案分析"通常針對專案。
+                        // 用戶：「顯示所有專案的合併統計資料」。所以只算屬於專案的。
+                    }
                     return t.projectId === this.selectedProjectId;
                 } else {
                     // 一般模式：排除有專案ID的支出 (如果希望一般模式純粹看日常) -> 根據需求，這裡先做「包含/不含」的開關可能比較複雜，

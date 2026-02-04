@@ -52,7 +52,9 @@
                 @go-to-history="historyFilter = { mode: $event.mode, categoryId: null, friendName: null, currency: $event.currency }; currentTab = 'history'"></overview-page>
 
             <history-page v-if="currentTab === 'history'" :transactions="filteredTransactions" :categories="categories"
-                :payment-methods="paymentMethods" @edit-item="handleEditItem"></history-page>
+                :payment-methods="paymentMethods" @edit-item="handleEditItem"
+                @update-filter="Object.assign(historyFilter, $event)"></history-page>
+
             <add-page v-if="currentTab === 'add'" :form="form" :categories="categories"
                 :payment-methods="paymentMethods" :friends="friends" :projects="projects" :loading="loading"
                 @toggle-currency="toggleCurrency" @submit="handleSubmit(form)"
@@ -65,8 +67,12 @@
                 :payment-methods="paymentMethods" :fx-rate="fxRate" :projects="projects"
                 @drill-down="handleDrillDown"></stats-page>
             <settings-page v-if="currentTab === 'settings'" :config="systemConfig" :friends="friends"
-                :projects="projects" @update-config="handleUpdateConfig"
-                @view-friend="handleViewFriend"></settings-page>
+                :transactions="transactions" :projects="projects" @update-config="handleUpdateConfig"
+                @view-friend="handleViewFriend" @view-project="handleViewProject"></settings-page>
+
+            <project-detail-page v-if="currentTab === 'project-detail'" :project="selectedProject"
+                :transactions="transactions" @back="currentTab = 'settings'; selectedProject = null"
+                @update-project="handleUpdateProject"></project-detail-page>
         </main>
 
         <footer

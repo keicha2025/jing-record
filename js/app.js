@@ -5,7 +5,7 @@ import { EditPage } from './pages/edit-page.js';
 import { HistoryPage } from './pages/history-page.js';
 import { StatsPage } from './pages/stats-page.js';
 import { SettingsPage } from './pages/settings-page.js';
-import { OverviewPage } from "./pages/overview-page.js";
+import { ProjectDetailPage } from './pages/project-detail-page.js';
 
 const { createApp, ref, onMounted, computed } = window.Vue;
 
@@ -16,7 +16,8 @@ createApp({
         'edit-page': EditPage,
         'history-page': HistoryPage,
         'stats-page': StatsPage,
-        'settings-page': SettingsPage
+        'settings-page': SettingsPage,
+        'project-detail-page': ProjectDetailPage
     },
     setup() {
         const getLocalISOString = () => {
@@ -34,21 +35,24 @@ createApp({
         const transactions = ref([]);
         const fxRate = ref(CONFIG.TWD_FIXED_RATE);
         const stats = ref({ monthlyLifeTotal: 0, allOneTimeTotal: 0, debtTotal: 0, totalInvestment: 0 });
-        const historyFilter = ref({ mode: 'all', categoryId: null, friendName: null, currency: null });
+        const historyFilter = ref({ mode: 'all', categoryId: null, friendName: null, currency: null, keyword: '' });
         const systemConfig = ref({ user_name: '留學生', fx_rate: 0.22 });
         const editForm = ref(null);
+        const selectedProject = ref(null);
 
         const form = ref({
             type: '支出', currency: 'JPY', amount: '', spendDate: getLocalISOString(),
             categoryId: 'cat_001', name: '', note: '', paymentMethod: '',
             isOneTime: false, isSplit: false, friendName: '', personalShare: 0, payer: '我', isAlreadyPaid: false,
-            projectId: '', // 【新增】關聯專案ID
+            projectId: '',
             action: 'add'
         });
 
         const filteredTransactions = computed(() => {
             let list = transactions.value;
             const filter = historyFilter.value;
+
+            // Mode Filtering
             if (filter.mode === 'monthly') {
                 const now = new Date();
                 list = list.filter(t => new Date(t.spendDate).getMonth() === now.getMonth() && new Date(t.spendDate).getFullYear() === now.getFullYear() && !t.isOneTime);
@@ -56,10 +60,28 @@ createApp({
                 list = list.filter(t => t.isOneTime);
             } else if (filter.mode === 'debt') {
                 list = list.filter(t => t.debtAmount !== 0 || t.type === '收款');
+            } else if (filter.mode === 'general') {
+                list = list.filter(t => !t.projectId); // Only non-project
+            } else if (filter.mode === 'project') {
+                list = list.filter(t => !!t.projectId); // Only project
             }
+
+            // Other filters
             if (filter.categoryId) list = list.filter(t => t.categoryId === filter.categoryId);
             if (filter.friendName) list = list.filter(t => t.friendName && (t.friendName.includes(filter.friendName) || t.payer === filter.friendName));
             if (filter.currency) list = list.filter(t => t.originalCurrency === filter.currency);
+
+            // Keyword Search
+            if (filter.keyword) {
+                const k = filter.keyword.toLowerCase();
+                list = list.filter(t =>
+                    (t.name && t.name.toLowerCase().includes(k)) ||
+                    (t.note && t.note.toLowerCase().includes(k)) ||
+                    (t.friendName && t.friendName.toLowerCase().includes(k)) ||
+                    (t.paymentMethod && t.paymentMethod.toLowerCase().includes(k))
+                );
+            }
+
             return list;
         });
 
@@ -70,7 +92,7 @@ createApp({
                 categories.value = data.categories || [];
                 friends.value = data.friends || [];
                 paymentMethods.value = data.paymentMethods || [];
-                projects.value = data.projects || []; // 【新增】讀取 Projects
+                projects.value = data.projects || [];
                 transactions.value = data.transactions || [];
                 if (data.stats) stats.value = data.stats;
                 if (data.config) {
@@ -113,7 +135,7 @@ createApp({
                 type: '支出', currency: 'JPY', amount: '', spendDate: getLocalISOString(),
                 categoryId: 'cat_001', name: '', note: '', paymentMethod: '',
                 isOneTime: false, isSplit: false, friendName: '', personalShare: 0, payer: '我', isAlreadyPaid: false,
-                projectId: '', // reset projectId
+                projectId: '',
                 action: 'add'
             };
             editForm.value = null;
@@ -129,29 +151,31 @@ createApp({
                 currency: item.originalCurrency || 'JPY',
                 action: 'edit',
                 isSplit: hasSplit,
-                projectId: item.projectId || '' // load projectId
+                projectId: item.projectId || ''
             }));
             currentTab.value = 'edit';
         };
 
         const getTabIcon = (t) => {
-            const icons = { overview: 'dashboard', history: 'list_alt', add: 'add', stats: 'bar_chart', settings: 'settings' };
+            const icons = { overview: 'dashboard', history: 'list_alt', add: 'add', stats: 'bar_chart', settings: 'settings', 'project-detail': 'flight_takeoff' };
             return icons[t] || 'help';
         };
 
         onMounted(loadData);
 
         return {
-            currentTab, loading, categories, friends, paymentMethods, projects, transactions, filteredTransactions, historyFilter, form, editForm, stats, systemConfig, fxRate,
+            currentTab, loading, categories, friends, paymentMethods, projects, transactions, filteredTransactions, historyFilter, form, editForm, stats, systemConfig, fxRate, selectedProject,
             handleSubmit, handleDelete, handleEditItem,
             formatNumber: (n) => new Intl.NumberFormat().format(Math.round(n || 0)),
             getTabIcon,
             toggleCurrency: () => form.value.currency = (form.value.currency === 'JPY' ? 'TWD' : 'JPY'),
             handleAddFriendToList: (n) => { if (!friends.value.includes(n)) friends.value.push(n) },
             resetForm,
-            handleDrillDown: (id) => { historyFilter.value = { mode: 'all', categoryId: id, friendName: null, currency: null }; currentTab.value = 'history'; },
+            handleDrillDown: (id) => { historyFilter.value = { mode: 'all', categoryId: id, friendName: null, currency: null, keyword: '' }; currentTab.value = 'history'; },
             handleUpdateConfig: async (c) => { loading.value = true; await API.saveTransaction({ action: 'updateConfig', ...c }); await loadData(); },
-            handleViewFriend: (n) => { historyFilter.value = { mode: 'all', categoryId: null, friendName: n, currency: null }; currentTab.value = 'history'; },
+            handleViewFriend: (n) => { historyFilter.value = { mode: 'all', categoryId: null, friendName: n, currency: null, keyword: '' }; currentTab.value = 'history'; },
+            handleViewProject: (p) => { selectedProject.value = p; currentTab.value = 'project-detail'; },
+            handleUpdateProject: async () => { await loadData(); },
             handleCreateProject: async (name) => {
                 if (!name) return;
                 loading.value = true;
@@ -159,10 +183,10 @@ createApp({
                     await API.saveTransaction({
                         action: 'updateProject',
                         name: name,
-                        startDate: getLocalISOString().split('T')[0], // Default today
+                        startDate: getLocalISOString().split('T')[0],
                         endDate: getLocalISOString().split('T')[0]
                     });
-                    await loadData(); // Refresh projects list
+                    await loadData();
                     alert("Project Created!");
                 } catch (e) {
                     alert("Error creating project: " + e);

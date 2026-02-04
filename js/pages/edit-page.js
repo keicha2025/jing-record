@@ -123,7 +123,7 @@ export const EditPage = {
                 <!-- 7. 旅行計畫模式 (Edit Page) -->
                 <div v-if="!isReadOnly" class="pt-4 border-t border-gray-50 space-y-4 px-2">
                     <div class="flex items-center justify-between">
-                        <span class="text-xs text-gray-400 font-light">{{ form.projectId ? '旅行計畫模式 (開啟)' : '旅行計畫模式' }}</span>
+                        <span class="text-xs text-gray-400 font-light">旅行計畫模式</span>
                         <!-- Toggle Switch -->
                         <div class="w-10 h-5 rounded-full relative transition-colors cursor-pointer" 
                              :class="form.projectId ? 'bg-[#4A4A4A]' : 'bg-gray-200'"
