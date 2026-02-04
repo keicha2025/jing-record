@@ -56,11 +56,11 @@
             <add-page v-if="currentTab === 'add'" :form="form" :categories="categories"
                 :payment-methods="paymentMethods" :friends="friends" :projects="projects" :loading="loading"
                 @toggle-currency="toggleCurrency" @submit="handleSubmit(form)"
-                @add-friend-to-list="handleAddFriendToList"></add-page>
+                @add-friend-to-list="handleAddFriendToList" @create-project="handleCreateProject"></add-page>
             <edit-page v-if="currentTab === 'edit'" :form="editForm" :categories="categories"
                 :payment-methods="paymentMethods" :friends="friends" :projects="projects" :loading="loading"
                 @submit="handleSubmit(editForm)" @delete-item="handleDelete"
-                @cancel="currentTab = 'history'; editForm = null;"></edit-page>
+                @cancel="currentTab = 'history'; editForm = null;" @create-project="handleCreateProject"></edit-page>
             <stats-page v-if="currentTab === 'stats'" :transactions="transactions" :categories="categories"
                 :payment-methods="paymentMethods" :fx-rate="fxRate" :projects="projects"
                 @drill-down="handleDrillDown"></stats-page>

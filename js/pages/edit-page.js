@@ -118,20 +118,37 @@ export const EditPage = {
                         </div>
                     </div>
                 </div>
-                </div>
 
                 <!-- 7. 進階功能 (專案/旅行) -->
-                <div v-if="!isReadOnly" class="pt-4 border-t border-gray-50 space-y-2 px-2">
-                     <label class="text-[10px] text-gray-400 uppercase tracking-widest font-medium">關聯旅行計畫</label>
-                     <div class="flex flex-wrap gap-2">
-                        <button @click="form.projectId = ''" 
-                                :class="!form.projectId ? 'bg-[#4A4A4A] text-white' : 'bg-gray-50 text-gray-400'" 
-                                class="px-4 py-1.5 rounded-full text-[10px]">無</button>
-                        <button v-for="p in activeProjects" :key="p.id" 
-                                @click="form.projectId = p.id"
-                                :class="form.projectId === p.id ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-500'" 
-                                class="px-4 py-1.5 rounded-full text-[10px] border border-transparent">{{ p.name }}</button>
-                     </div>
+                <!-- 7. 旅行計畫模式 (Edit Page) -->
+                <div v-if="!isReadOnly" class="pt-4 border-t border-gray-50 space-y-4 px-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-400 font-light">{{ form.projectId ? '旅行計畫模式 (開啟)' : '旅行計畫模式' }}</span>
+                        <!-- Toggle Switch -->
+                        <div class="w-10 h-5 rounded-full relative transition-colors cursor-pointer" 
+                             :class="form.projectId ? 'bg-[#4A4A4A]' : 'bg-gray-200'"
+                             @click="toggleProjectMode">
+                            <div class="absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform" 
+                                 :class="{'translate-x-5': form.projectId}"></div>
+                        </div>
+                    </div>
+
+                    <div v-if="form.projectId || isProjectModeOpen" class="bg-gray-50 p-6 rounded-3xl space-y-4 animate-in slide-in-from-top-2">
+                         <div class="flex flex-wrap gap-2">
+                            <button v-for="p in activeProjects" :key="p.id" 
+                                    @click="form.projectId = p.id"
+                                    :class="form.projectId === p.id ? 'bg-[#4A4A4A] text-white' : 'bg-white text-gray-400 border border-gray-100'" 
+                                    class="px-4 py-1.5 rounded-full text-[10px]">{{ p.name }}</button>
+                            <!-- Add Project Button -->
+                            <button @click="isAddingNewProject = !isAddingNewProject" class="px-3 py-1.5 rounded-full bg-gray-200 text-gray-400 text-[10px]">+</button>
+                         </div>
+
+                         <!-- Quick Add Project Input -->
+                         <div v-if="isAddingNewProject" class="mx-2 bg-white p-3 rounded-2xl flex items-center space-x-2 mt-2 shadow-sm">
+                            <input type="text" v-model="newProjectName" placeholder="新旅行計畫" class="flex-grow bg-gray-50 p-2 rounded-xl text-xs outline-none">
+                            <button @click="quickCreateProject" class="bg-[#4A4A4A] text-white px-4 py-2 rounded-xl text-[10px]">OK</button>
+                         </div>
+                    </div>
                 </div>
                 <div v-else-if="currentProjectName" class="px-2 pt-2 border-t border-gray-50">
                     <span class="text-[10px] text-gray-400 uppercase tracking-widest block mb-1">旅行計畫</span>
@@ -151,7 +168,7 @@ export const EditPage = {
     </section>
     `,
     props: ['form', 'categories', 'friends', 'loading', 'paymentMethods', 'projects'],
-    data() { return { selectedFriends: [], isReadOnly: true }; },
+    data() { return { selectedFriends: [], isReadOnly: true, isProjectModeOpen: false, isAddingNewProject: false, newProjectName: '' }; },
     computed: {
         filteredCategories() { return this.categories.filter(c => c.type === (this.form.type === '收款' ? '支出' : this.form.type)); },
         autoShareValue() {
@@ -172,6 +189,23 @@ export const EditPage = {
         }
     },
     methods: {
+        toggleProjectMode() {
+            if (this.form.projectId) {
+                this.form.projectId = '';
+                this.isProjectModeOpen = false;
+            } else {
+                this.isProjectModeOpen = true;
+                if (this.activeProjects.length > 0 && !this.form.projectId) {
+                    this.form.projectId = this.activeProjects[0].id;
+                }
+            }
+        },
+        async quickCreateProject() {
+            if (!this.newProjectName) return;
+            this.$emit('create-project', this.newProjectName); // Event handled by parent (App.js)
+            this.newProjectName = '';
+            this.isAddingNewProject = false;
+        },
         formatNumber(num) { return new Intl.NumberFormat().format(Math.round(num || 0)); },
         getCategoryName(id) { return this.categories.find(c => c.id === id)?.name || '未分類'; },
         getCategoryIcon(id) { return this.categories.find(c => c.id === id)?.icon || 'sell'; },
@@ -203,6 +237,7 @@ export const EditPage = {
             handler() {
                 this.isReadOnly = true;
                 if (this.form.friendName) this.selectedFriends = this.form.friendName.split(', ');
+                this.isProjectModeOpen = !!this.form.projectId; // Auto-open if project exists
             },
             immediate: true
         }

@@ -53,7 +53,7 @@ export const SettingsPage = {
                         <span class="text-xs font-medium text-gray-700">{{ p.name }}</span>
                         <span class="text-[9px] text-gray-400">{{ p.startDate }} ~ {{ p.endDate }}</span>
                     </div>
-                    <span :class="p.status === 'Active' ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-500'" class="text-[9px] px-2 py-1 rounded-full">{{ p.status }}</span>
+                    <span :class="p.status === 'Active' ? 'bg-[#4A4A4A] text-white' : 'bg-gray-200 text-gray-500'" class="text-[9px] px-2 py-1 rounded-full">{{ p.status }}</span>
                  </div>
                  <p class="text-[9px] text-gray-300 px-2 pt-1">*請至 Google Sheets 新增或修改專案</p>
             </div>

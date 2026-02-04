@@ -151,7 +151,25 @@ createApp({
             resetForm,
             handleDrillDown: (id) => { historyFilter.value = { mode: 'all', categoryId: id, friendName: null, currency: null }; currentTab.value = 'history'; },
             handleUpdateConfig: async (c) => { loading.value = true; await API.saveTransaction({ action: 'updateConfig', ...c }); await loadData(); },
-            handleViewFriend: (n) => { historyFilter.value = { mode: 'all', categoryId: null, friendName: n, currency: null }; currentTab.value = 'history'; }
+            handleViewFriend: (n) => { historyFilter.value = { mode: 'all', categoryId: null, friendName: n, currency: null }; currentTab.value = 'history'; },
+            handleCreateProject: async (name) => {
+                if (!name) return;
+                loading.value = true;
+                try {
+                    await API.saveTransaction({
+                        action: 'updateProject',
+                        name: name,
+                        startDate: getLocalISOString().split('T')[0], // Default today
+                        endDate: getLocalISOString().split('T')[0]
+                    });
+                    await loadData(); // Refresh projects list
+                    alert("Project Created!");
+                } catch (e) {
+                    alert("Error creating project: " + e);
+                } finally {
+                    loading.value = false;
+                }
+            }
         };
     }
 }).mount('#app');
