@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>日日記 | Nichi-Nichi Log</title>
+    
+    <!-- PWA 核心設定 -->
+    <link rel="manifest" href="manifest.json" crossorigin="use-credentials">
+    <meta name="theme-color" content="#4A4A4A">
+    
+    <!-- iOS 專屬優化 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="日日記">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2544/2544087.png">
+
+    <!-- 外部資源 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col relative overflow-hidden" v-cloak>
+        <div v-if="loading" class="fixed inset-0 z-[100] loading-overlay flex flex-col items-center justify-center">
+            <div class="w-8 h-8 border-2 border-gray-100 border-t-gray-500 rounded-full animate-spin mb-4"></div>
+            <p class="text-[10px] tracking-[0.2em] text-gray-400 uppercase font-light">Syncing...</p>
+        </div>
+
+        <header class="p-6 pb-2 shrink-0 flex justify-between items-end">
+            <h1 class="text-lg font-light tracking-[0.3em] text-gray-300 uppercase">Nichi-Nichi</h1>
+            <div v-if="currentTab === 'history' && (historyFilter.mode !== 'all' || historyFilter.friendName || historyFilter.categoryId)" 
+                 @click="historyFilter = { mode: 'all', categoryId: null, friendName: null, currency: null }"
+                 class="flex items-center space-x-1 text-[9px] bg-gray-100 text-gray-400 px-3 py-1.5 rounded-full cursor-pointer">
+                <span class="material-symbols-rounded !text-xs">filter_list_off</span>
+                <span>CLEAR</span>
+            </div>
+        </header>
+
+        <main class="flex-grow overflow-y-auto px-4 pb-32 no-scrollbar">
+            <overview-page 
+                v-if="currentTab === 'overview'" 
+                :transactions="transactions" 
+                :stats="stats" 
+                :fx-rate="fxRate" 
+                @go-to-history="historyFilter = { mode: $event.mode, categoryId: null, friendName: null, currency: $event.currency }; currentTab = 'history'" 
+            ></overview-page>
+
+            <history-page v-if="currentTab === 'history'" :transactions="filteredTransactions" :categories="categories" :payment-methods="paymentMethods" @edit-item="handleEditItem"></history-page>
+            <add-page v-if="currentTab === 'add'" :form="form" :categories="categories" :payment-methods="paymentMethods" :friends="friends" :loading="loading" @toggle-currency="toggleCurrency" @submit="handleSubmit(form)" @add-friend-to-list="handleAddFriendToList"></add-page>
+            <edit-page v-if="currentTab === 'edit'" :form="editForm" :categories="categories" :payment-methods="paymentMethods" :friends="friends" :loading="loading" @submit="handleSubmit(editForm)" @delete-item="handleDelete" @cancel="currentTab = 'history'; editForm = null;"></edit-page>
+            <stats-page v-if="currentTab === 'stats'" :transactions="transactions" :categories="categories" :payment-methods="paymentMethods" :fx-rate="fxRate" @drill-down="handleDrillDown"></stats-page>
+            <settings-page v-if="currentTab === 'settings'" :config="systemConfig" :friends="friends" @update-config="handleUpdateConfig" @view-friend="handleViewFriend"></settings-page>
+        </main>
+
+        <footer class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-50 px-6 pb-10 pt-4 z-50">
+            <div class="max-w-md mx-auto flex items-center justify-between">
+                <button v-for="tab in ['overview', 'history', 'add', 'stats', 'settings']" @click="currentTab = tab" :class="[currentTab === tab ? 'text-gray-800' : 'text-gray-200', tab === 'add' ? 'add-btn-wrap' : 'nav-item']">
+                    <div v-if="tab === 'add'" class="add-btn active:scale-90 transition-transform"><span class="material-symbols-rounded !text-3xl">add</span></div>
+                    <span v-else class="material-symbols-rounded text-2xl">{{ getTabIcon(tab) }}</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- 註冊 Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js');
+      }
+    </script>
+    <script type="module" src="./js/app.js"></script>
+</body>
+</html>
