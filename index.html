@@ -56,45 +56,18 @@
 </head>
 
 <body>
-    <div id="app" class="max-w-md mx-auto min-h-screen flex flex-col relative overflow-hidden" v-cloak>
+    <div id="app" class="max-w-md mx-auto min-h-screen relative" v-cloak>
         <div v-if="loading" class="fixed inset-0 z-[100] loading-overlay flex flex-col items-center justify-center">
             <div class="w-8 h-8 border-2 border-gray-100 border-t-gray-500 rounded-full animate-spin mb-4"></div>
             <p class="text-[10px] tracking-[0.2em] text-gray-400 uppercase font-light">Syncing...</p>
         </div>
 
-        <header class="p-6 pb-2 shrink-0 flex justify-between items-end">
-            <h1 class="text-lg font-light tracking-[0.3em] text-gray-300 uppercase">Nichi-Nichi</h1>
-            <div class="flex items-center space-x-2">
-                <!-- Filter Clear Button -->
-                <div v-if="currentTab === 'history' && (historyFilter.mode !== 'all' || historyFilter.friendName || historyFilter.categoryId)"
-                    @click="historyFilter = { mode: 'all', categoryId: null, friendName: null, currency: null }"
-                    class="flex items-center space-x-1 text-[9px] bg-gray-100 text-gray-400 px-3 py-1.5 rounded-full cursor-pointer">
-                    <span class="material-symbols-rounded !text-xs">filter_list_off</span>
-                    <span>CLEAR</span>
-                </div>
+        <app-header :app-mode="appMode" :sync-status="syncStatus" :current-tab="currentTab"
+            :history-filter="historyFilter" @retry-sync="retrySync"
+            @clear-filter="historyFilter = { mode: 'all', categoryId: null, friendName: null, currency: null }">
+        </app-header>
 
-                <!-- Status Icon -->
-                <div class="text-gray-300 transition-colors duration-300 flex items-center justify-center w-8 h-8">
-                    <!-- Admin: Syncing -->
-                    <span v-if="appMode === 'ADMIN' && syncStatus === 'syncing'"
-                        class="material-symbols-rounded animate-spin text-gray-400">sync</span>
-                    <!-- Admin: Error (Click to retry) -->
-                    <span v-else-if="appMode === 'ADMIN' && syncStatus === 'error'" @click="retrySync"
-                        class="material-symbols-rounded text-red-300 cursor-pointer animate-pulse">sync_problem</span>
-                    <!-- Admin: Idle -->
-                    <span v-else-if="appMode === 'ADMIN'"
-                        class="material-symbols-rounded text-gray-300">cloud_done</span>
-                    <!-- Viewer -->
-                    <span v-else-if="appMode === 'VIEWER'"
-                        class="material-symbols-rounded text-gray-300">visibility</span>
-                    <!-- Guest -->
-                    <span v-else class="material-symbols-rounded text-gray-300"
-                        title="Guest Mode (Local Only)">cloud_off</span>
-                </div>
-            </div>
-        </header>
-
-        <main class="flex-grow overflow-y-auto px-4 pb-32 no-scrollbar">
+        <main class="w-full px-4 pt-4 pb-32">
             <!-- Viewer Dashboard -->
             <view-dashboard v-if="currentTab === 'overview' && appMode === 'VIEWER'" :transactions="transactions"
                 :stats="stats" @switch-tab="currentTab = $event"></view-dashboard>
@@ -130,24 +103,15 @@
                 @update-project="handleUpdateProject"></project-detail-page>
         </main>
 
-        <footer
-            class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-50 px-6 pb-10 pt-4 z-50">
-            <div class="max-w-md mx-auto flex items-center justify-between">
-                <button v-for="tab in ['overview', 'history', 'add', 'stats', 'settings']" @click="currentTab = tab"
-                    v-show="!(appMode === 'VIEWER' && tab === 'add')"
-                    :class="[currentTab === tab ? 'text-gray-800' : 'text-gray-200', tab === 'add' ? 'add-btn-wrap' : 'nav-item']">
-                    <div v-if="tab === 'add'" class="add-btn active:scale-90 transition-transform"><span
-                            class="material-symbols-rounded !text-3xl">add</span></div>
-                    <span v-else class="material-symbols-rounded text-2xl">{{ getTabIcon(tab) }}</span>
-                </button>
-            </div>
-        </footer>
+        <app-footer v-model:current-tab="currentTab" :app-mode="appMode">
+        </app-footer>
 
 
         <!-- Success Modal -->
-        <success-modal :visible="showSuccessModal" :item="successItem" @close="showSuccessModal = false"
-            @view-details="handleViewDetails">
-        </success-modal>
+        <!-- System Modal -->
+        <system-modal :visible="modalState.visible" :config="modalState.config" @confirm="handleModalConfirm"
+            @cancel="handleModalCancel">
+        </system-modal>
     </div>
 
     <!-- 註冊 Service Worker -->

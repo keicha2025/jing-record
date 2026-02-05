@@ -210,7 +210,7 @@ export const SettingsPage = {
             }
         },
         async createProject() {
-            if (!this.newProject.name) return alert("Please enter a name");
+            if (!this.newProject.name) return this.dialog.alert("Please enter a name");
             this.projectSaving = true;
             try {
                 await API.saveTransaction({
@@ -221,10 +221,10 @@ export const SettingsPage = {
                 });
                 this.isAddingProject = false;
                 this.newProject = { name: '', startDate: '', endDate: '' };
-                alert("Project Added! Please refresh page to see changes.");
+                this.dialog.alert("Project Added! Please refresh page to see changes.", 'success');
                 // 理想情況下應該重新 fetch，但這裡暫時重整或等 Parent 更新
             } catch (e) {
-                alert("Error: " + e.toString());
+                this.dialog.alert("Error: " + e.toString());
             } finally {
                 this.projectSaving = false;
             }
@@ -250,12 +250,12 @@ export const SettingsPage = {
                 this.$emit('update-config', {}); // Hack to trigger reload? No, create dedicated event.
                 // SettingsPage emits 'update-config'. Parent handles it by reloading.
                 // Let's use that or just alert.
-                alert("Project Updated!");
+                this.dialog.alert("Project Updated!", 'success');
                 this.selectedProject = null;
                 // Ideally reload data
                 this.handleReload(); // We need a way to reload data.
             } catch (e) {
-                alert("Error: " + e.toString());
+                this.dialog.alert("Error: " + e.toString());
             } finally {
                 this.projectSaving = false;
             }

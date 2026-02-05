@@ -1,25 +1,11 @@
+import { SearchBar } from '../components/search-bar.js';
+
 export const HistoryPage = {
+    components: { SearchBar },
     template: `
-    <section class="space-y-4 py-4 animate-in fade-in pb-24 min-h-[60vh]">
-        <!-- 搜尋與篩選列 -->
-        <!-- 搜尋與篩選列 -->
-        <div class="space-y-2">
-            <div class="flex space-x-2">
-                <div class="flex-1 bg-white rounded-xl flex items-center px-3 py-2">
-                    <span class="material-symbols-rounded text-gray-300 text-lg">search</span>
-                    <input type="text" v-model="localFilter.keyword" class="w-full text-xs ml-2 outline-none text-gray-600 placeholder-gray-300">
-                </div>
-                <!-- 篩選器切換 -->
-                <div class="relative">
-                    <select v-model="localFilter.mode" class="appearance-none bg-white border border-gray-50 shadow-sm text-xs text-center font-medium text-gray-500 rounded-xl px-4 py-2 pr-8 outline-none h-full">
-                        <option value="all">全部</option>
-                        <option value="general">一般</option>
-                        <option value="project">專案</option>
-                    </select>
-                    <span class="absolute right-2 top-1/2 transform -translate-y-1/2 material-symbols-rounded text-gray-300 text-sm pointer-events-none">expand_more</span>
-                </div>
-            </div>
-        </div>
+    <section class="space-y-4 py-4 animate-in fade-in pb-24 min-h-[60dvh]">
+        <!-- 搜尋與篩選列 Component -->
+        <search-bar v-model="localFilter"></search-bar>
 
         <!-- 分組顯示列表 -->
         <div v-if="groupedTransactions.length === 0" class="text-center py-20">
@@ -27,13 +13,13 @@ export const HistoryPage = {
         </div>
 
         <div v-else v-for="(group, dateKey) in groupedTransactions" :key="dateKey" class="space-y-3">
-             <div class="sticky top-0 z-10 px-2 py-1 bg-white/50 backdrop-blur-sm -mx-4 mb-2">
+             <div class="py-2 mb-2">
                  <span class="text-[10px] font-medium text-gray-400 bg-[#F7F7F7] px-2 py-1 rounded-full ml-4 shadow-sm">{{ formatMonth(group.month) }}</span>
              </div>
              
              <div v-for="item in group.items" :key="item.id" 
                   @click="$emit('edit-item', item)"
-                  class="bg-white p-5 rounded-[1.8rem] muji-shadow flex justify-between items-center active:scale-[0.98] transition-all">
+                  class="bg-white p-5 rounded-[1.8rem] muji-shadow flex justify-between items-center active:scale-[0.98] transition-transform">
                 <div class="flex items-center space-x-4">
                     <div class="w-11 h-11 bg-gray-50 rounded-full flex items-center justify-center">
                         <span class="material-symbols-rounded text-gray-400 text-xl">{{ getIcon(item.categoryId) }}</span>

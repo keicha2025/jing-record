@@ -151,6 +151,7 @@ export const AddPage = {
     </section>
     `,
     props: ['form', 'categories', 'friends', 'loading', 'paymentMethods', 'projects'],
+    inject: ['dialog'],
     data() {
         return {
             isAddingFriend: false, addFriendTarget: '', newFriendName: '', selectedFriends: [], splitMode: 'auto',
@@ -275,11 +276,11 @@ export const AddPage = {
         },
         prepareAndSubmit() {
             // [新增] 資料檢查邏輯
-            if (!this.form.amount || this.form.amount <= 0) { alert('請輸入有效的金額'); return; }
-            if (!this.form.name) { alert('請輸入項目名稱'); return; }
-            if (!this.form.paymentMethod) { alert('請選擇支付方式'); return; }
-            if (this.form.type !== '收款' && !this.form.categoryId) { alert('請選擇分類'); return; }
-            if (this.form.isSplit && this.selectedFriends.length === 0) { alert('已開啟分帳模式，請至少選擇一位朋友'); return; }
+            if (!this.form.amount || this.form.amount <= 0) { this.dialog.alert('請輸入有效的金額'); return; }
+            if (!this.form.name) { this.dialog.alert('請輸入項目名稱'); return; }
+            if (!this.form.paymentMethod) { this.dialog.alert('請選擇支付方式'); return; }
+            if (this.form.type !== '收款' && !this.form.categoryId) { this.dialog.alert('請選擇分類'); return; }
+            if (this.form.isSplit && this.selectedFriends.length === 0) { this.dialog.alert('已開啟分帳模式，請至少選擇一位朋友'); return; }
 
             const share = this.splitMode === 'auto' ? this.autoShareValue : this.form.personalShare;
             let debt = 0;

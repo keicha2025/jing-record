@@ -2,28 +2,28 @@ import { API } from '../api.js';
 
 export const ProjectDetailPage = {
     template: `
-    <section class="space-y-6 py-4 animate-in fade-in">
-        <!-- Header / Navigation -->
-        <div class="flex items-center justify-between px-2">
-            <button @click="$emit('back')" class="text-gray-400 hover:text-gray-600 transition-colors">
-                <span class="material-symbols-rounded text-2xl">arrow_back</span>
-            </button>
-            <h2 class="text-xs font-medium text-gray-500 tracking-widest uppercase">旅行計畫詳情</h2>
-            <div class="w-6"></div> <!-- Spacer -->
-        </div>
-
+    <section class="animate-in fade-in pb-20">
         <!-- Main Content Card -->
-        <div class="bg-white p-6 rounded-[2.5rem] muji-shadow border border-gray-50 space-y-6 min-h-[60vh] relative">
+        <div class="bg-white p-6 rounded-[2.5rem] muji-shadow border border-gray-50 space-y-6 min-h-[60vh] relative mt-2">
             
-            <!-- Edit Toggle (Top Right) -->
-            <div class="absolute top-6 right-6 z-10">
-                <button v-if="!isEditing" @click="isEditing = true" class="text-gray-400 hover:text-gray-600 transition-colors">
-                    <span class="material-symbols-rounded text-lg">edit</span>
+            <!-- Navigation & Controls -->
+            <!-- Navigation & Controls -->
+            <div class="flex items-center justify-between pb-2">
+                <button @click="$emit('back')" class="text-gray-400 hover:text-gray-600 transition-colors flex items-center space-x-1">
+                    <span class="material-symbols-rounded text-xl">arrow_back</span>
+                    <span class="text-[10px] tracking-widest uppercase">BACK</span>
                 </button>
+                <div class="flex items-center space-x-4">
+                    <button v-if="!isEditing" @click="isEditing = true" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <span class="material-symbols-rounded text-lg">edit</span>
+                    </button>
+                    <!-- Duplicate CANCEL removed as requested -->
+                </div>
             </div>
 
             <!-- Read Only View -->
-            <div v-if="!isEditing" class="space-y-8 pt-4">
+            <div v-if="!isEditing" class="space-y-8">
+                <!-- ... content ... -->
                 <div class="text-center space-y-3">
                     <span :class="project.status === 'Active' ? 'bg-[#4A4A4A] text-white' : 'bg-gray-200 text-gray-500'" 
                           class="text-[10px] px-3 py-1 rounded-full inline-block tracking-widest uppercase">
@@ -53,16 +53,14 @@ export const ProjectDetailPage = {
                     <input type="text" v-model="editForm.name" class="w-full bg-gray-50 px-5 py-4 rounded-2xl text-sm outline-none text-gray-700 placeholder-gray-300 transition-all focus:bg-white focus:shadow-sm border border-transparent focus:border-gray-100">
                 </div>
 
-                <!-- 搜尋與篩選列 -->
-        <div class="space-y-2">
-            <div class="flex space-x-2">
-                <div class="flex-1 bg-white rounded-xl flex items-center px-3 py-2">
-                    <label class="text-[10px] text-gray-400 uppercase tracking-widest font-medium ml-2">開始日期</label>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-[10px] text-gray-400 uppercase tracking-widest font-medium ml-2">開始日期</label>
                         <input type="date" v-model="editForm.startDate" class="w-full bg-gray-50 px-4 py-3 rounded-2xl text-xs outline-none text-gray-600">
                     </div>
                     <div class="space-y-2">
-                         <label class="text-[10px] text-gray-400 uppercase tracking-widest font-medium ml-2">結束日期</label>
-                         <input type="date" v-model="editForm.endDate" class="w-full bg-gray-50 px-4 py-3 rounded-2xl text-xs outline-none text-gray-600">
+                        <label class="text-[10px] text-gray-400 uppercase tracking-widest font-medium ml-2">結束日期</label>
+                        <input type="date" v-model="editForm.endDate" class="w-full bg-gray-50 px-4 py-3 rounded-2xl text-xs outline-none text-gray-600">
                     </div>
                 </div>
 
@@ -88,6 +86,7 @@ export const ProjectDetailPage = {
     </section>
     `,
     props: ['project', 'transactions'],
+    inject: ['dialog'],
     data() {
         return {
             isEditing: false,
@@ -147,9 +146,9 @@ export const ProjectDetailPage = {
                 // Emit update to parent to refresh listing and current project view
                 this.$emit('update-project', this.editForm);
                 this.isEditing = false;
-                alert("已儲存變更");
+                this.dialog.alert("已儲存變更", 'success');
             } catch (e) {
-                alert("儲存失敗: " + e.toString());
+                this.dialog.alert("儲存失敗: " + e.toString());
             } finally {
                 this.saving = false;
             }

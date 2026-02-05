@@ -4,17 +4,18 @@ export const EditPage = {
     template: `
     <section class="space-y-6 py-4 animate-in fade-in pb-24">
         <div class="bg-white p-6 rounded-[2.5rem] muji-shadow border border-gray-50 space-y-6">
-            <div class="flex justify-between items-center px-2">
-                <span class="text-[10px] text-gray-400 uppercase tracking-[0.3em] font-medium text-gray-400">
+            <!-- Header Controls Integrated in Card -->
+            <div class="flex justify-between items-center px-1 border-b border-gray-50 pb-4">
+                <span class="text-[10px] text-gray-400 uppercase tracking-[0.3em] font-medium">
                     {{ isReadOnly ? '查看紀錄' : '編輯' + form.type }}
                 </span>
-                <button @click="$emit('cancel')" class="text-[10px] text-gray-300 uppercase tracking-widest">
+                <button @click="$emit('cancel')" class="text-[10px] text-gray-300 uppercase tracking-widest hover:text-gray-500 transition-colors">
                     {{ isReadOnly ? '關閉' : '取消' }}
                 </button>
             </div>
 
             <!-- 1. 金額 -->
-            <div class="text-center py-6 border-b border-gray-50">
+            <div class="text-center py-2">
                 <p class="text-[10px] text-gray-300 mb-2">{{ form.type }}金額</p>
                 <div v-if="isReadOnly" class="text-5xl font-light text-gray-700">
                     <span class="text-xl mr-1">{{ form.currency === 'TWD' ? '$' : '¥' }}</span>{{ formatNumber(form.amount) }}

@@ -9,9 +9,11 @@ import { OverviewPage } from "./pages/overview-page.js";
 import { ProjectDetailPage } from './pages/project-detail-page.js';
 
 import { ViewDashboard } from './pages/view-dashboard.js';
-import { SuccessModal } from './components/success-modal.js';
+import { SystemModal } from './components/system-modal.js';
+import { AppHeader } from './components/app-header.js';
+import { AppFooter } from './components/app-footer.js';
 
-const { createApp, ref, onMounted, computed } = window.Vue;
+const { createApp, ref, onMounted, computed, provide } = window.Vue;
 
 createApp({
     components: {
@@ -24,7 +26,11 @@ createApp({
 
         'project-detail-page': ProjectDetailPage,
         'view-dashboard': ViewDashboard,
-        'success-modal': SuccessModal
+        'project-detail-page': ProjectDetailPage,
+        'view-dashboard': ViewDashboard,
+        'system-modal': SystemModal,
+        'app-header': AppHeader,
+        'app-footer': AppFooter
     },
     setup() {
         const getLocalISOString = () => {
@@ -35,6 +41,12 @@ createApp({
         const currentTab = ref('add');
         const loading = ref(false);
         const lastSaved = ref(null);
+
+        // Scroll to top on tab change
+        window.Vue.watch(currentTab, () => {
+            window.scrollTo({ top: 0, behavior: 'instant' });
+        });
+
         const categories = ref([]);
         const friends = ref([]);
         const paymentMethods = ref([]);
@@ -53,8 +65,84 @@ createApp({
 
         const editForm = ref(null);
         const selectedProject = ref(null);
-        const showSuccessModal = ref(false);
-        const successItem = ref(null);
+
+
+        // --- Global Dialog System ---
+        const modalState = ref({
+            visible: false,
+            config: {
+                type: 'info', // success, error, confirm, transaction_success
+                title: '',
+                message: '',
+                confirmText: '確認',
+                secondaryText: '',
+                showCancel: false,
+                data: null
+            },
+            resolve: null // For Promise-based confirm
+        });
+
+        const dialog = {
+            alert: (message, type = 'error', title = '') => {
+                return new Promise(resolve => {
+                    modalState.value.config = {
+                        type,
+                        title: title || (type === 'error' ? '錯誤' : '提示'),
+                        message,
+                        confirmText: '確認',
+                        secondaryText: '',
+                        showCancel: false
+                    };
+                    modalState.value.resolve = resolve; // Resolve on confirm
+                    modalState.value.visible = true;
+                });
+            },
+            confirm: (message, title = '確認') => {
+                return new Promise(resolve => {
+                    modalState.value.config = {
+                        type: 'confirm',
+                        title,
+                        message,
+                        confirmText: '確定',
+                        secondaryText: '取消',
+                        showCancel: true // explicitly show cancel
+                    };
+                    modalState.value.resolve = resolve;
+                    modalState.value.visible = true;
+                });
+            },
+            // Specialized for Transaction Success
+            showTransactionSuccess: (item, onViewDetails) => {
+                modalState.value.config = {
+                    type: 'transaction_success',
+                    title: '已新增',
+                    message: '', // use custom data slot
+                    confirmText: '確認',
+                    secondaryText: '看明細',
+                    showCancel: false, // secondary button is handled manually
+                    data: item,
+                    onSecondary: onViewDetails
+                };
+                modalState.value.visible = true;
+                modalState.value.resolve = null; // No promise needed for this flow usually, or maybe?
+            }
+        };
+        provide('dialog', dialog);
+
+        const handleModalConfirm = () => {
+            modalState.value.visible = false;
+            if (modalState.value.resolve) modalState.value.resolve(true); // Resolve Confirm as True
+        };
+
+        const handleModalCancel = () => {
+            modalState.value.visible = false;
+            if (modalState.value.resolve) modalState.value.resolve(false); // Resolve Confirm as False (or just resolve void for alert)
+
+            // Special handling for "View Details" (mapped to secondary)
+            if (modalState.value.config.onSecondary) {
+                modalState.value.config.onSecondary();
+            }
+        };
 
         const form = ref({
             type: '支出', currency: 'JPY', amount: '', spendDate: getLocalISOString(),
@@ -106,7 +194,12 @@ createApp({
 
             // Other filters
             if (filter.categoryId) list = list.filter(t => t.categoryId === filter.categoryId);
-            if (filter.friendName) list = list.filter(t => t.friendName && (t.friendName.includes(filter.friendName) || t.payer === filter.friendName));
+            if (filter.friendName) {
+                list = list.filter(t =>
+                    (t.friendName && t.friendName.includes(filter.friendName)) ||
+                    (t.payer && t.payer === filter.friendName)
+                );
+            }
             if (filter.currency) list = list.filter(t => t.originalCurrency === filter.currency);
 
             // Keyword Search (Enhanced)
@@ -195,7 +288,7 @@ createApp({
                             }
                         } catch (e) {
                             console.error("Failed to fetch defaults", e);
-                            alert("無法取得預設資料：請檢查網路或 Google Script 權限 (需設為 Anyone)");
+                            dialog.alert("無法取得預設資料：請檢查網路或 Google Script 權限 (需設為 Anyone)", 'error');
                             // Fallback
                             categories.value = [{ id: 'cat_001', name: '餐飲' }, { id: 'cat_999', name: '其他' }];
                             friends.value = [];
@@ -268,7 +361,7 @@ createApp({
                 }
 
                 if (data.is_admin === false && adminToken.value) {
-                    alert("管理員憑證無效 (Invalid Token)");
+                    await dialog.alert("管理員憑證無效 (Invalid Token)", 'error');
                     localStorage.removeItem('admin_token');
                     window.location.reload();
                     return;
@@ -352,8 +445,12 @@ createApp({
                 resetForm();
             } else {
                 // Show Success Modal for Add
-                successItem.value = { ...dataToSave };
-                showSuccessModal.value = true;
+                // Show Success Modal for Add
+                dialog.showTransactionSuccess({ ...dataToSave }, () => {
+                    // On View Details (Secondary Action)
+                    currentTab.value = 'history';
+                    // Optional: could highlight the item
+                });
                 resetForm();
             }
             // Don't await loadData() - separate read/write
@@ -369,7 +466,7 @@ createApp({
                 return;
             }
 
-            if (!confirm("確定要永久刪除此筆資料嗎？")) return;
+            if (!await dialog.confirm("確定要永久刪除此筆資料嗎？")) return;
 
             // Optimistic Delete
             transactions.value = transactions.value.filter(t => t.row !== row); // This is risky if row is used as ID. 
@@ -427,21 +524,17 @@ createApp({
             resetForm,
             handleDrillDown: (id) => { historyFilter.value = { mode: 'all', categoryId: id, friendName: null, currency: null, keyword: '' }; currentTab.value = 'history'; },
 
-            showSuccessModal, successItem,
-            handleViewDetails: () => {
-                showSuccessModal.value = false;
-                currentTab.value = 'history';
-            },
+            modalState, handleModalConfirm, handleModalCancel,
 
             handleUpdateConfig: async (c) => {
                 if (appMode.value === 'GUEST') {
                     systemConfig.value = { ...systemConfig.value, ...c };
                     localStorage.setItem('guest_config', JSON.stringify(systemConfig.value));
                     await loadData();
-                    alert("設定已更新 (Guest)");
+                    dialog.alert("設定已更新 (Guest)", 'success');
                     return;
                 }
-                if (appMode.value !== 'ADMIN') return alert("權限不足");
+                if (appMode.value !== 'ADMIN') return dialog.alert("權限不足", 'error');
                 loading.value = true;
                 await API.saveTransaction({ action: 'updateConfig', ...c, token: adminToken.value });
                 await loadData();
@@ -457,15 +550,15 @@ createApp({
                 adminToken.value = pwd;
                 window.location.reload();
             },
-            clearGuestData: () => {
-                if (confirm("確定要清除所有訪客資料嗎？")) {
+            clearGuestData: async () => {
+                if (await dialog.confirm("確定要清除所有訪客資料嗎？", "清除資料")) {
                     localStorage.removeItem('guest_data');
                     window.location.reload();
                 }
             },
             retrySync: processSyncQueue,
             handleCreateProject: async (name) => {
-                if (appMode.value !== 'ADMIN') return alert("權限不足");
+                if (appMode.value !== 'ADMIN') return dialog.alert("權限不足");
                 if (!name) return;
                 loading.value = true;
                 try {
@@ -476,9 +569,9 @@ createApp({
                         endDate: getLocalISOString().split('T')[0]
                     }, adminToken.value);
                     await loadData();
-                    alert("Project Created!");
+                    dialog.alert("Project Created!", 'success');
                 } catch (e) {
-                    alert("Error creating project: " + e);
+                    dialog.alert("Error creating project: " + e, 'error');
                 } finally {
                     loading.value = false;
                 }
