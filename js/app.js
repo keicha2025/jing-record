@@ -111,37 +111,37 @@ createApp({
                     modalState.value.visible = true;
                 });
             },
-            // Specialized for Transaction Success
-            showTransactionSuccess: (item, onViewDetails) => {
+            // Specialized for Transaction Success (Added customizable options)
+            showTransactionSuccess: (item, onSecondaryAction, options = {}) => {
                 modalState.value.config = {
                     type: 'transaction_success',
-                    title: '已新增',
+                    title: options.title || '已新增',
                     message: '', // use custom data slot
-                    confirmText: '確認',
-                    secondaryText: '看明細',
-                    showCancel: false, // secondary button is handled manually
+                    confirmText: options.confirmText || '確認',
+                    secondaryText: options.secondaryText || '看明細',
+                    showCancel: false,
                     data: item,
-                    onSecondary: onViewDetails
+                    onSecondary: onSecondaryAction
                 };
+                // If onConfirm is provided in options, use it. Otherwise default to simple resolve (Close).
+                modalState.value.resolve = options.onConfirm ? options.onConfirm : () => { };
                 modalState.value.visible = true;
-                modalState.value.resolve = null; // No promise needed for this flow usually, or maybe?
             }
         };
         provide('dialog', dialog);
 
         const handleModalConfirm = () => {
             modalState.value.visible = false;
-            if (modalState.value.resolve) modalState.value.resolve(true); // Resolve Confirm as True
+            if (modalState.value.resolve) modalState.value.resolve(true);
         };
 
         const handleModalCancel = () => {
             modalState.value.visible = false;
-            if (modalState.value.resolve) modalState.value.resolve(false); // Resolve Confirm as False (or just resolve void for alert)
-
-            // Special handling for "View Details" (mapped to secondary)
+            // secondary action is usually "Cancel", but here it's "Secondary Action"
             if (modalState.value.config.onSecondary) {
                 modalState.value.config.onSecondary();
             }
+            if (modalState.value.resolve) modalState.value.resolve(false);
         };
 
         const form = ref({
@@ -235,7 +235,7 @@ createApp({
                     if (localData) {
                         const parsed = JSON.parse(localData);
                         transactions.value = parsed.transactions || [];
-                        // Recalculate stats for guest? Or just mock. 
+                        // Recalculate stats for guest? Or just mock.
                         // Simplified calc for guest stats
                         let total = 0;
                         transactions.value.forEach(t => { if (!t.isOneTime && t.type === '支出') total += parseFloat(t.amountJPY); });
@@ -251,7 +251,7 @@ createApp({
 
                             // If ON, also import Projects and Masked Transactions
                             // Friends? User didn't explicitly forbid, but said "OFF only Cat+PM". So ON implies others ok.
-                            // But usually Guest wants clean slate friend list? 
+                            // But usually Guest wants clean slate friend list?
                             // Let's import friends if ON so dropdowns work, but transactions are anonymized.
                             friends.value = data.friends || [];
                             projects.value = data.projects || [];
@@ -296,36 +296,6 @@ createApp({
                         }
                     } else {
                         // OFF: Only Categories & Payment Methods
-                        // Fetch from backend? User said "Import Default Data (Connect)" toggle.
-                        // "If OFF, only import Categories and Payment config".
-                        // Wait, does "OFF" mean "Fetch but filter" or "Use Hardcoded"?
-                        // User context: "In Guest Mode... Import Default Data... If OFF..."
-                        // Previously OFF used hardcoded. 
-                        // "只要帶入類別與支付方式的設定" -> Likely implies fetching these from backend is OK (or preferred) but skipping privacy data?
-                        // OR does it mean "Use the hardcoded minimal defaults"?
-                        // Given "Import Default Data (Connection)" label:
-                        // If OFF, likely means "Don't Connect" or "Connect but minimal".
-                        // But if I don't connect, I use hardcoded. 
-                        // User said: "若為關閉，只要帶入類別與支付方式的設定" (If Closed, only bring in Cat & PM settings).
-                        // This sounds like I SHOULD still fetch (or use hardcoded if that's what "default" means).
-                        // BUT, if I am offline (Guest default), I usually use hardcoded.
-                        // However, user said "System prompts 'Settings Updated' but didn't import". 
-                        // If OFF, maybe they WANT the backend Categories?
-                        // "Import Default Data (Connect)" -> The toggle controls the "Connect and Import" behavior.
-                        // If OFF, it implies "Don't Connect".
-                        // So I will stick to HARDCODED defaults for OFF, but ensure they are just Cat + PM.
-                        // Actually, looking at previous code: OFF used hardcoded.
-                        // I will stick to Hardcoded for OFF to avoid network calls when user explicitly says "No Import".
-                        // Logic: OFF = Hardcoded Minimal. ON = Fetch Full (Masked).
-
-                        // Wait, re-reading: "若為關閉，只要帶入類別與支付方式的設定"
-                        // Maybe they want the backend's categories even if OFF?
-                        // But the toggle says "Import ... (Connect)". Checking it ON means "Connect".
-                        // So unchecking means "Don't Connect".
-                        // So "Bring in Cat & PM" must refer to the hardcoded set or a misunderstand of "off".
-                        // I'll assume standard hardcoded defaults (Clean Slate) are what's expected for OFF.
-                        // My previous code did exactly that.
-                        // Let's refine the Hardcoded list to be generic and useful.
                         categories.value = [
                             { id: 'cat_001', name: '餐飲', icon: 'restaurant' },
                             { id: 'cat_002', name: '交通', icon: 'train' },
@@ -350,7 +320,7 @@ createApp({
                 paymentMethods.value = data.paymentMethods || [];
                 projects.value = data.projects || [];
 
-                // Merge synced transactions with potential guest ones? 
+                // Merge synced transactions with potential guest ones?
                 // No, Guest mode resets on refresh, so we just take remote data as base.
                 transactions.value = data.transactions || [];
 
@@ -416,8 +386,8 @@ createApp({
                 const idx = transactions.value.findIndex(t => t.id === payload.id);
                 if (idx !== -1) transactions.value[idx] = {
                     ...payload,
-                    row: transactions.value[idx].row // keep row for GAS deletion if needed? 
-                    // Actually row number might change on server. 
+                    row: transactions.value[idx].row // keep row for GAS deletion if needed?
+                    // Actually row number might change on server.
                     // Ideally we don't rely on row number for edits if we use ID, but GAS needs row.
                     // For optimistic UI, we just update the list.
                 };
@@ -440,16 +410,24 @@ createApp({
                 }
             }
 
+            const goHistory = () => { currentTab.value = 'history'; resetForm(); };
+            const doReload = () => { window.location.reload(); };
+
             if (dataToSave.action === 'edit') {
-                currentTab.value = 'history';
-                resetForm();
+                dialog.showTransactionSuccess({ ...dataToSave }, doReload, {
+                    title: '已更新',
+                    confirmText: '返回明細',
+                    secondaryText: '重新整理',
+                    onConfirm: goHistory
+                });
             } else {
                 // Show Success Modal for Add
-                // Show Success Modal for Add
-                dialog.showTransactionSuccess({ ...dataToSave }, () => {
-                    // On View Details (Secondary Action)
-                    currentTab.value = 'history';
-                    // Optional: could highlight the item
+                // Secondary (View Details) -> goHistory
+                // Confirm -> just close (resetForm called below already)
+                dialog.showTransactionSuccess({ ...dataToSave }, goHistory, {
+                    title: '已新增',
+                    confirmText: '確認',
+                    secondaryText: '看明細'
                 });
                 resetForm();
             }
@@ -458,18 +436,28 @@ createApp({
 
         const handleDelete = async (row) => {
             if (appMode.value === 'VIEWER') return;
+
+            // Find Item for success dialog
+            const item = transactions.value.find(t => t.row === row);
+
             if (appMode.value === 'GUEST') {
                 if (!confirm("體驗模式：確定刪除？")) return;
                 // Optimistic Delete for Guest
                 transactions.value = transactions.value.filter(t => t.row !== row);
                 localStorage.setItem('guest_data', JSON.stringify({ transactions: transactions.value }));
+                // Show Success Dialog for Guest
+                if (item) {
+                    dialog.showTransactionSuccess(item, () => { currentTab.value = 'history'; editForm.value = null; }, {
+                        title: '已刪除', confirmText: '返回明細', secondaryText: ''
+                    });
+                }
                 return;
             }
 
             if (!await dialog.confirm("確定要永久刪除此筆資料嗎？")) return;
 
             // Optimistic Delete
-            transactions.value = transactions.value.filter(t => t.row !== row); // This is risky if row is used as ID. 
+            transactions.value = transactions.value.filter(t => t.row !== row); // This is risky if row is used as ID.
             // Better to rely on IDs if possible, but existing backend uses Row.
             // For now, assume Row is correct for existing items.
 
@@ -477,6 +465,19 @@ createApp({
                 syncQueue.value.push({ action: 'delete', row: row });
                 localStorage.setItem('sync_queue', JSON.stringify(syncQueue.value));
                 processSyncQueue();
+            }
+
+            // Show Success Dialog
+            if (item) {
+                const goHistory = () => { currentTab.value = 'history'; editForm.value = null; };
+                const doReload = () => { window.location.reload(); };
+
+                dialog.showTransactionSuccess(item, doReload, {
+                    title: '已刪除',
+                    confirmText: '返回明細',
+                    secondaryText: '重新整理',
+                    onConfirm: goHistory
+                });
             }
         };
 

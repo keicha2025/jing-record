@@ -24,4 +24,10 @@
 ## 🐛 Bug Fixes
 - **Invalid Token Alert**: Fixed an issue where the "Invalid Token" alert would close immediately before the user could read it. Added `await` to ensure user confirmation.
 - **Friend Filtering**: Fixed the issue where clicking a friend in Settings didn't show all relevant transactions. The filter now correctly checks both `friendName` (Beneficiary) and `payer`.
+
 - **UI Tweaks**: Removed the unused cloud status icon from the header.
+
+## ✨ New Features
+- **Edit/Delete Feedback**:
+  - Implemented a clear success dialog after editing or deleting a transaction.
+  - Added a "Reload" (重新整理) action to these dialogs to ensure data consistency with the backend, alongside the standard "Return to Details" (返回明細) button.
