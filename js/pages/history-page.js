@@ -1,6 +1,6 @@
 export const HistoryPage = {
     template: `
-    <section class="space-y-4 py-4 animate-in fade-in pb-24">
+    <section class="space-y-4 py-4 animate-in fade-in pb-24 min-h-[60vh]">
         <!-- 搜尋與篩選列 -->
         <!-- 搜尋與篩選列 -->
         <div class="space-y-2">
@@ -27,8 +27,8 @@ export const HistoryPage = {
         </div>
 
         <div v-else v-for="(group, dateKey) in groupedTransactions" :key="dateKey" class="space-y-3">
-             <div class="sticky top-[3.5rem] z-0 px-2 py-1">
-                 <span class="text-[10px] font-medium text-gray-400 bg-[#F7F7F7] px-2 py-1 rounded-full">{{ formatMonth(group.month) }}</span>
+             <div class="sticky top-0 z-10 px-2 py-1 bg-white/50 backdrop-blur-sm -mx-4 mb-2">
+                 <span class="text-[10px] font-medium text-gray-400 bg-[#F7F7F7] px-2 py-1 rounded-full ml-4 shadow-sm">{{ formatMonth(group.month) }}</span>
              </div>
              
              <div v-for="item in group.items" :key="item.id" 
@@ -38,13 +38,13 @@ export const HistoryPage = {
                     <div class="w-11 h-11 bg-gray-50 rounded-full flex items-center justify-center">
                         <span class="material-symbols-rounded text-gray-400 text-xl">{{ getIcon(item.categoryId) }}</span>
                     </div>
-                    <div class="flex flex-col">
-                        <span class="text-sm font-medium text-gray-700">{{ item.name }}</span>
+                    <div class="flex flex-col min-w-0 flex-1 pr-2">
+                        <span class="text-sm font-medium text-gray-700 truncate block">{{ item.name }}</span>
                         <div class="flex flex-wrap items-center gap-x-2 mt-0.5 text-[9px]">
-                            <span class="text-gray-300">{{ item.spendDate.split('T')[0] }} · {{ getPaymentName(item.paymentMethod) }}</span>
-                            <span v-if="item.payer !== '我' && item.type === '支出'" class="bg-gray-100 text-gray-500 px-1.5 rounded">{{ item.payer }} 付款</span>
-                            <span v-if="item.type === '收款'" class="bg-gray-100 text-gray-400 px-1.5 rounded">{{ item.friendName }} 還款</span>
-                            <span v-if="item.projectId" class="text-gray-300">{{ getProjectName(item.projectId) }}</span>
+                            <span class="text-gray-300 whitespace-nowrap">{{ item.spendDate.split('T')[0] }} · {{ getPaymentName(item.paymentMethod) }}</span>
+                            <span v-if="item.payer !== '我' && item.type === '支出'" class="bg-gray-100 text-gray-500 px-1.5 rounded whitespace-nowrap">{{ item.payer }} 付款</span>
+                            <span v-if="item.type === '收款'" class="bg-gray-100 text-gray-400 px-1.5 rounded whitespace-nowrap">{{ item.friendName }} 還款</span>
+                            <span v-if="item.projectId" class="text-gray-300 truncate max-w-[80px]">{{ getProjectName(item.projectId) }}</span>
                         </div>
                     </div>
                 </div>

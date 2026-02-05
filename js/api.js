@@ -1,10 +1,10 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from './config.js?v=1.3';
 
 export const API = {
-    async fetchInitialData() {
+    async fetchInitialData(token = '') {
         try {
-            // 加入時間戳記避免快取與 CORS 重新導向錯誤
-            const url = `${CONFIG.GAS_URL}?t=${new Date().getTime()}`;
+            // 加入時間戳記避免快取與 CORS 重新導向錯誤，並附帶 Token
+            const url = `${CONFIG.GAS_URL}?t=${new Date().getTime()}&token=${encodeURIComponent(token)}`;
             const response = await fetch(url, {
                 method: 'GET',
                 mode: 'cors', // GET 必須用 cors 才能讀取資料
@@ -20,13 +20,14 @@ export const API = {
             return { categories: [], friends: [], transactions: [], stats: {} };
         }
     },
-    async saveTransaction(payload) {
+    async saveTransaction(payload, token = '') {
         try {
+            const finalPayload = { ...payload, token };
             const savePromise = fetch(CONFIG.GAS_URL, {
                 method: 'POST',
-                mode: 'no-cors',
+                mode: 'cors',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify(finalPayload)
             });
             const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1000));
             await Promise.race([savePromise, timeoutPromise]);

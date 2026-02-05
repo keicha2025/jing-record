@@ -3,28 +3,50 @@ import { API } from '../api.js';
 
 export const SettingsPage = {
     template: `
-    <section class="space-y-6 py-4 animate-in fade-in pb-24">
-        <!-- 1. 基本設定卡片 -->
+    <section class="space-y-4 py-4 animate-in fade-in pb-24">
+
+
+        <!-- 0. 基本設定卡片 -->
         <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-6">
             <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2">System Config</h3>
             
             <div class="space-y-4">
+                <!-- 1. 使用者名稱 -->
                 <div class="flex items-center justify-between px-2">
                     <span class="text-xs text-gray-500">使用者名稱</span>
-                    <input type="text" v-model="localConfig.user_name" class="text-right text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none w-32">
+                    <input type="text" v-model="localConfig.user_name" class="text-right text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none w-32 placeholder-gray-300">
                 </div>
+
+                <!-- 2. 當前匯率 -->
                 <div class="flex items-center justify-between px-2">
                     <span class="text-xs text-gray-500">當前匯率 (1 JPY = ? TWD)</span>
                     <input type="number" v-model="localConfig.fx_rate" step="0.001" class="text-right text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none w-32">
                 </div>
+
+                <!-- 3. 帶入預設資料 (Guest Only) -->
+                <div v-if="appMode === 'GUEST'" class="flex items-center justify-between px-2 bg-gray-50 p-3 rounded-xl">
+                    <span class="text-xs text-gray-500">帶入記帳資料 (連網)</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" v-model="localConfig.import_default" class="sr-only peer">
+                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4A4A4A]"></div>
+                    </label>
+                </div>
             </div>
 
+            <!-- 4. 更新按鈕 -->
             <button @click="saveSettings" :disabled="saving" class="w-full bg-[#4A4A4A] text-white py-4 rounded-2xl text-[10px] font-medium tracking-[0.3em] uppercase active:scale-95 transition-all">
-                {{ saving ? 'Saving...' : '更新紀錄' }}
+                {{ saving ? 'Saving...' : '更新設定' }}
             </button>
+
+            <!-- 5. 清除訪客資料 -->
+            <div v-if="appMode === 'GUEST'" class="pt-2 border-t border-gray-100">
+                <button @click="$emit('clear-guest-data')" class="w-full text-red-400 text-[10px] tracking-widest py-2 hover:bg-red-50 rounded-lg transition-colors">
+                    清除訪客資料 (Clear Data)
+                </button>
+            </div>
         </div>
 
-        <!-- 2. 旅行計畫 (Projects) -->
+        <!-- 1. 旅行計畫 (Projects) -->
         <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
             <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2 flex justify-between items-center">
                 <span>旅行計畫</span>
@@ -62,7 +84,7 @@ export const SettingsPage = {
 
 
 
-        <!-- 3. 朋友名單管理 -->
+        <!-- 2. 朋友名單管理 -->
         <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
             <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2">Friends List</h3>
             <div class="grid grid-cols-1 divide-y divide-gray-50">
@@ -79,7 +101,7 @@ export const SettingsPage = {
             </div>
         </div>
 
-        <!-- 4. 外部連結 -->
+        <!-- 3. 外部連結 -->
         <div class="px-2 space-y-3">
             <a :href="sheetUrl" target="_blank" class="flex items-center justify-between p-5 bg-white rounded-2xl muji-shadow border border-gray-50 active:scale-95 transition-all">
                 <div class="flex items-center space-x-3">
@@ -89,14 +111,33 @@ export const SettingsPage = {
                 <span class="material-symbols-rounded text-gray-200 text-sm">open_in_new</span>
             </a>
             
-            <p class="text-[9px] text-gray-300 text-center leading-relaxed">
-                資料儲存於您的私人 Google Sheets 中<br>
-                Nichi-Nichi Log v1.3 (Exchange Student Edition)
-            </p>
+            </a>
+        </div>
+
+        <!-- 4. Device Registration (Admin Access) -->
+        <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
+             <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2">Device Access</h3>
+             <div v-if="appMode === 'ADMIN'" class="flex items-center space-x-2 px-2">
+                 <span class="material-symbols-rounded text-[#4A4A4A]">check_circle</span>
+                 <span class="text-xs text-gray-600 font-medium tracking-wider">此設備已註冊 (Admin)</span>
+             </div>
+             <div v-else-if="appMode === 'GUEST'" class="space-y-3">
+                 <p class="text-[9px] text-gray-400 px-2 leading-relaxed">輸入管理員密碼以啟用雲端同步功能。</p>
+                 <div class="flex space-x-2">
+                     <input type="password" v-model="adminPassword" placeholder="Admin Password" class="bg-gray-50 px-4 py-3 rounded-xl text-xs outline-none w-full tracking-widest">
+                     <button @click="$emit('register-device', adminPassword)" class="bg-[#4A4A4A] text-white px-4 rounded-xl text-xs font-medium whitespace-nowrap active:scale-95 transition-transform">
+                         註冊
+                     </button>
+                 </div>
+             </div>
+             <div v-else class="space-y-3">
+                 <!-- VIEWER MODE -->
+                 <div class="text-[10px] text-gray-400 px-2">閱覽模式 (唯讀)</div>
+             </div>
         </div>
     </section>
     `,
-    props: ['config', 'friends', 'projects', 'transactions'],
+    props: ['config', 'friends', 'projects', 'transactions', 'appMode'],
     data() {
         return {
             localConfig: { user_name: '', fx_rate: 0.22 },

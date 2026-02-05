@@ -1,5 +1,13 @@
-function doGet() {
+function checkAuth(token) {
+  const adminPassword = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
+  return adminPassword && token === adminPassword;
+}
+
+function doGet(e) {
   try {
+    const token = e && e.parameter ? e.parameter.token : "";
+    const isAdmin = checkAuth(token);
+
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const getSheetData = (name) => {
       const sheet = ss.getSheetByName(name);
@@ -28,6 +36,7 @@ function doGet() {
     let allLifeTotal = 0;       
     let netDebt = 0; 
 
+    // 遮蔽敏感資訊邏輯：若非 Admin，Note 欄位轉為 ***
     const transactions = transData.map((r, index) => {
       if (!r[0]) return null;
       const spendDate = new Date(r[2]);
@@ -55,7 +64,9 @@ function doGet() {
       return {
         row: index + 2, id: r[0], spendDate: Utilities.formatDate(spendDate, "GMT+9", "yyyy/MM/dd HH:mm"),
         type, name: r[4], categoryId: r[5], amountJPY, amountTWD: parseFloat(r[7] || 0), paymentMethod: r[8],
-        isOneTime, friendName: r[14], note: r[13], personalShare, payer: r[15] || "我", debtAmount,
+        isOneTime, friendName: r[14], 
+        note: isAdmin ? r[13] : (r[13] ? "***" : ""), // Mask Note
+        personalShare, payer: r[15] || "我", debtAmount,
         originalCurrency: originalCurrency,
         projectId: projectId // 【新增】回傳 ProjectID
       };
@@ -64,7 +75,8 @@ function doGet() {
     const output = { 
       categories, friends, paymentMethods, projects, config, // 【新增】回傳 projects
       transactions: transactions.slice(0, 150),
-      stats: { monthlyLifeTotal, allOneTimeTotal, allLifeTotal, totalInvestment: allLifeTotal + allOneTimeTotal, debtTotal: netDebt }
+      stats: { monthlyLifeTotal, allOneTimeTotal, allLifeTotal, totalInvestment: allLifeTotal + allOneTimeTotal, debtTotal: netDebt },
+      is_admin: isAdmin // Allow frontend to know auth state
     };
 
     return ContentService.createTextOutput(JSON.stringify(output)).setMimeType(ContentService.MimeType.JSON);
@@ -76,6 +88,13 @@ function doGet() {
 function doPost(e) {
   try {
     const params = JSON.parse(e.postData.contents);
+    const token = params.token;
+    
+    // Auth Check
+    if (!checkAuth(token)) {
+      return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "401 Unauthorized" })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     
     // 處理系統設定更新
@@ -93,7 +112,6 @@ function doPost(e) {
     }
 
     // 處理專案新增/更新 (簡單實作)
-    // 處理專案新增/更新
     if (params.action === 'updateProject') {
        const projectSheet = ss.getSheetByName("Projects");
        if (!projectSheet) {
