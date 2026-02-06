@@ -1,18 +1,34 @@
+import { Theme } from '../theme.js';
+
 export const ViewDashboard = {
     template: `
     <section class="space-y-6 py-4 animate-in fade-in pb-10">
         <!-- Hero: Total Spending -->
-        <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-2 text-center">
-            <p class="text-[10px] text-gray-400 uppercase tracking-widest">留學總支出 (JPY)</p>
-            <h2 class="text-4xl font-extralight text-gray-700 tracking-tight">¥ {{ formatNumber(totalOutflow) }}</h2>
-            <p class="text-[10px] text-gray-300 pt-2">唯讀模式 • 資料已去識別化</p>
+        <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4 text-center">
+            
+            <!-- Currency Toggle -->
+            <!-- Currency Toggle -->
+            <div class="flex bg-gray-50 rounded-xl p-1 mb-2">
+                 <button @click="baseCurrency = 'JPY'" 
+                         :class="baseCurrency === 'JPY' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" 
+                         class="flex-1 py-2 text-[10px] tracking-widest rounded-lg transition-all font-medium">JPY</button>
+                 <button @click="baseCurrency = 'TWD'" 
+                         :class="baseCurrency === 'TWD' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" 
+                         class="flex-1 py-2 text-[10px] tracking-widest rounded-lg transition-all font-medium">TWD</button>
+            </div>
+
+            <div class="space-y-1">
+                <p class="text-[10px] text-gray-400 uppercase tracking-widest">我的留學總支出 ({{ baseCurrency }})</p>
+                <h2 class="text-4xl font-extralight text-gray-700 tracking-tight">{{ getCurrencySymbol }} {{ formatNumber(totalOutflow) }}</h2>
+                <p class="text-[10px] text-gray-300 pt-1">唯讀模式 • 資料已去識別化</p>
+            </div>
         </div>
 
-        <!-- Charts: Monthly Trend (Simple Bars) -->
+        <!-- Charts: Category Distribution (Bar Chart) -->
         <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
-            <h3 class="text-[10px] text-gray-400 uppercase tracking-widest px-2">Recent Trend</h3>
-            <div class="h-32 w-full">
-                <canvas ref="trendChart"></canvas>
+            <h3 class="text-[10px] text-gray-400 uppercase tracking-widest px-2">Category Breakdown</h3>
+            <div class="h-64 w-full"> 
+                <canvas ref="categoryChart"></canvas>
             </div>
         </div>
 
@@ -28,77 +44,136 @@ export const ViewDashboard = {
                 <p class="text-xs text-gray-600 font-medium">統計分析</p>
                 <p class="text-[9px] text-gray-300 mt-1">支出類別分佈</p>
             </div>
-            <div @click="enterGuestMode" class="bg-gray-800 p-5 rounded-2xl muji-shadow border border-gray-600 active:scale-95 transition-all cursor-pointer col-span-2 flex items-center justify-between">
-                <div class="text-white">
-                    <p class="text-xs font-medium">進入體驗模式</p>
-                    <p class="text-[9px] text-gray-400 mt-1">開啟沙盒試用完整功能 (不儲存)</p>
+            
+            <!-- Enter Guest Mode -->
+            <div @click="enterGuestMode" class="bg-white p-5 rounded-2xl muji-shadow border border-gray-50 active:scale-95 transition-all cursor-pointer col-span-2 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-600 font-medium">進入體驗模式</p>
+                    <p class="text-[9px] text-gray-300 mt-1">開啟沙盒試用完整功能 (不儲存)</p>
                 </div>
-                <span class="material-symbols-rounded text-white">arrow_forward</span>
+                <span class="material-symbols-rounded text-gray-300">arrow_forward</span>
             </div>
         </div>
     </section>
     `,
-    props: ['transactions', 'stats'],
+    props: ['transactions', 'categories', 'fxRate'],
     data() {
-        return { chartInstance: null };
+        return {
+            baseCurrency: 'JPY',
+            // chartInstance removed from data to avoid reactivity issues
+        };
     },
     computed: {
-        totalOutflow() {
+        getCurrencySymbol() { return this.baseCurrency === 'JPY' ? '¥' : '$'; },
+
+        // Centralized logic mimicking stats-page.js 'processedList'
+        processedTransactions() {
+            const rate = Number(this.fxRate) || 0.22;
+            // console.log("[ViewDashboard] Calculation Rate:", rate); // Debug removed for cleanliness
+
             return this.transactions
                 .filter(t => t.type === '支出')
-                .reduce((acc, t) => acc + (t.originalCurrency === 'JPY' ? Number(t.amountJPY) : Number(t.amountTWD) / 0.22), 0);
+                .map(t => {
+                    const originalCurr = t.originalCurrency || 'JPY';
+                    const personal = Number(t.personalShare || 0);
+                    let finalVal = 0;
+
+                    // Logic from stats-page.js (isMyShareOnly=true)
+                    if (originalCurr === this.baseCurrency) {
+                        finalVal = personal;
+                    } else if (this.baseCurrency === 'JPY') {
+                        // Target JPY, Orig TWD
+                        finalVal = personal / rate;
+                    } else {
+                        // Target TWD, Orig JPY
+                        finalVal = personal * rate;
+                    }
+
+                    return { ...t, convertedAmount: finalVal };
+                });
+        },
+
+        totalOutflow() {
+            return this.processedTransactions.reduce((acc, t) => acc + t.convertedAmount, 0);
         }
     },
     methods: {
         formatNumber(num) { return new Intl.NumberFormat().format(Math.round(num || 0)); },
-        enterGuestMode() {
-            // Remove /view from URL and reload to enter Guest/Normal mode
-            const newUrl = window.location.href.split('?')[0].replace('/view', '');
-            window.location.href = newUrl;
-        },
+        enterGuestMode() { window.location.href = 'index.html'; },
+
         renderChart() {
-            if (!this.$refs.trendChart) return;
-            const ctx = this.$refs.trendChart.getContext('2d');
-            if (this.chartInstance) this.chartInstance.destroy();
+            if (!this.$refs.categoryChart) return;
+            const ctx = this.$refs.categoryChart.getContext('2d');
 
-            // Generate last 6 months data
-            const labels = [];
-            const data = [];
-            for (let i = 5; i >= 0; i--) {
-                const d = new Date();
-                d.setMonth(d.getMonth() - i);
-                const ym = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0');
-                labels.push(ym.substring(5)); // 'MM'
-
-                const val = this.transactions
-                    .filter(t => t.spendDate.startsWith(ym) && t.type === '支出')
-                    .reduce((acc, t) => acc + (t.originalCurrency === 'JPY' ? Number(t.amountJPY) : Number(t.amountTWD) / 0.22), 0);
-                data.push(val);
+            // Destroy existing chart instance if exists
+            if (this.chartInstance) {
+                this.chartInstance.destroy();
+                this.chartInstance = null;
             }
 
+            // Aggregate sorted by value using processed data
+            const map = {};
+            this.processedTransactions.forEach(t => {
+                let catName = '其他';
+                if (this.categories) {
+                    const c = this.categories.find(cat => cat.id === t.categoryId);
+                    if (c) catName = c.name;
+                }
+                if (!map[catName]) map[catName] = 0;
+                map[catName] += t.convertedAmount;
+            });
+
+            // Remove zero values and sort desc
+            const sorted = Object.entries(map)
+                .filter(s => s[1] > 0)
+                .sort((a, b) => b[1] - a[1]);
+
+            const labels = sorted.map(s => s[0]);
+            const data = sorted.map(s => s[1]);
+
+            // Create new chart instance (assigned to this, not data)
             this.chartInstance = new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: labels,
                     datasets: [{
                         data: data,
-                        borderColor: '#4A4A4A',
-                        borderWidth: 1.5,
-                        pointBackgroundColor: '#FFFFFF',
-                        pointBorderColor: '#4A4A4A',
-                        pointRadius: 3,
-                        tension: 0.4,
-                        fill: false
+                        backgroundColor: Theme.colors.primary,
+                        borderRadius: 4,
+                        barThickness: 16,
                     }]
                 },
                 options: {
+                    indexAxis: 'y',
                     responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
-                    scales: { y: { display: false }, x: { grid: { display: false }, border: { display: false } } }
+                    scales: {
+                        x: { display: false, grid: { display: false } },
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                font: { family: '"Noto Sans TC", sans-serif', size: 11, weight: '500' },
+                                color: Theme.colors.primary
+                            }
+                        }
+                    },
+                    animation: { duration: 500 }
                 }
             });
         }
     },
-    mounted() { this.$nextTick(() => this.renderChart()); },
-    watch: { transactions: { handler() { this.renderChart(); }, deep: true } }
+    mounted() {
+        this.$nextTick(() => this.renderChart());
+    },
+    beforeUnmount() {
+        if (this.chartInstance) {
+            this.chartInstance.destroy();
+            this.chartInstance = null;
+        }
+    },
+    watch: {
+        transactions: { handler() { this.$nextTick(() => this.renderChart()); }, deep: true },
+        fxRate: { handler() { this.$nextTick(() => this.renderChart()); } },
+        baseCurrency: { handler() { this.$nextTick(() => this.renderChart()); } }
+    }
 };

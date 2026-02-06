@@ -1,0 +1,51 @@
+/* 
+ * Design Tokens
+ * 定義網站的全域設計變數，包含顏色、字體等。
+ */
+
+:root {
+    /* --- Brand Colors (品牌主色) --- */
+    /* 深灰/炭黑：主要用於文字、按鈕、強調色 */
+    --color-primary: #4A4A4A;
+    --color-primary-rgb: 74, 74, 74;
+
+    /* --- Background Colors (背景色) --- */
+    /* 米白/紙張色：主要背景 */
+    --color-bg-main: #FDFCFB;
+    /* 純白：卡片背景 */
+    --color-bg-card: #FFFFFF;
+    /* 淺灰：次要背景、輸入框背景 */
+    --color-bg-input: #F9FAFB;
+    /* tailwind gray-50 */
+
+    /* --- Text Colors (文字色) --- */
+    /* 主要文字 */
+    --color-text-main: #4A4A4A;
+    /* 次要文字 */
+    --color-text-secondary: #9CA3AF;
+    /* tailwind gray-400 */
+    /* 淺色文字 (placeholder) */
+    --color-text-light: #D1D5DB;
+    /* tailwind gray-300 */
+
+    /* --- Border Colors (邊框色) --- */
+    --color-border-light: #F9FAFB;
+    /* tailwind gray-50 */
+    --color-border-medium: #E5E7EB;
+    /* tailwind gray-200 */
+
+    /* --- Status Colors (狀態色) --- */
+    /* 紅色：刪除/危險操作 (text-red-300) */
+    --color-danger: #fca5a5;
+
+    /* 綠色：專用於 Google 試算表圖示 (text-green-600) */
+    --color-google-green: #16a34a;
+
+    /* --- Chart Colors (圖表色系) --- */
+    --chart-color-1: #4A4A4A;
+    --chart-color-2: #7A7A7A;
+    --chart-color-3: #9A9A9A;
+    --chart-color-4: #BDBDBD;
+    --chart-color-5: #D1C7BD;
+    --chart-color-6: #E5E5E5;
+}

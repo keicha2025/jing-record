@@ -25,7 +25,7 @@ export const SettingsPage = {
 
                 <!-- 3. 帶入預設資料 (Guest Only) -->
                 <div v-if="appMode === 'GUEST'" class="flex items-center justify-between px-2 bg-gray-50 p-3 rounded-xl">
-                    <span class="text-xs text-gray-500">帶入記帳資料 (連網)</span>
+                    <span class="text-xs text-gray-500">帶入記帳資料</span>
                     <label class="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" v-model="localConfig.import_default" class="sr-only peer">
                         <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4A4A4A]"></div>
@@ -40,8 +40,8 @@ export const SettingsPage = {
 
             <!-- 5. 清除訪客資料 -->
             <div v-if="appMode === 'GUEST'" class="pt-2 border-t border-gray-100">
-                <button @click="$emit('clear-guest-data')" class="w-full text-red-400 text-[10px] tracking-widest py-2 hover:bg-red-50 rounded-lg transition-colors">
-                    清除訪客資料 (Clear Data)
+                <button @click="$emit('clear-guest-data')" class="w-full text-red-400 text-[10px] tracking-widest py-2 rounded-lg transition-colors">
+                    清除訪客資料
                 </button>
             </div>
         </div>

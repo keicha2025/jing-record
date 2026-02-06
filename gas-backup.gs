@@ -36,6 +36,20 @@ function doGet(e) {
     let allLifeTotal = 0;       
     let netDebt = 0; 
 
+    // --- 訪客/檢視模式：資料去識別化 Map ---
+    let friendMap = {};
+    let friendCounter = 1;
+    function getAnonymizedName(originalName) {
+         if (!originalName || originalName === "我") return originalName;
+         // 拆分多個朋友 (例如 "John, Mary")
+         return originalName.split(', ').map(n => {
+             if (n === "我") return "我";
+             if (!friendMap[n]) friendMap[n] = "友" + friendCounter++;
+             return friendMap[n];
+         }).join(', ');
+    }
+    // -------------------------------------
+
     // 遮蔽敏感資訊邏輯：若非 Admin，Note 欄位轉為 ***
     const transactions = transData.map((r, index) => {
       if (!r[0]) return null;
@@ -46,7 +60,18 @@ function doGet(e) {
       const personalShare = parseFloat(r[11] || 0);
       const debtAmount = parseFloat(r[12] || 0);
       const originalCurrency = r[16] || "JPY"; 
-      const projectId = r[17] || ""; // 【新增】讀取第 18 欄 ProjectID
+      const projectId = r[17] || ""; 
+      
+      let friendName = r[14];
+      let payer = r[15] || "我";
+      let note = r[13];
+
+      // 若非管理員，進行去識別化
+      if (!isAdmin) {
+          note = note ? "***" : ""; 
+          friendName = getAnonymizedName(friendName);
+          payer = getAnonymizedName(payer);
+      }
 
       if (type === '支出') {
         netDebt += debtAmount; 
@@ -64,19 +89,31 @@ function doGet(e) {
       return {
         row: index + 2, id: r[0], spendDate: Utilities.formatDate(spendDate, "GMT+9", "yyyy/MM/dd HH:mm"),
         type, name: r[4], categoryId: r[5], amountJPY, amountTWD: parseFloat(r[7] || 0), paymentMethod: r[8],
-        isOneTime, friendName: r[14], 
-        note: isAdmin ? r[13] : (r[13] ? "***" : ""), // Mask Note
-        personalShare, payer: r[15] || "我", debtAmount,
+        isOneTime, friendName: friendName, 
+        note: note,
+        personalShare, payer: payer, debtAmount,
         originalCurrency: originalCurrency,
-        projectId: projectId // 【新增】回傳 ProjectID
+        projectId: projectId 
       };
     }).filter(t => t !== null).reverse();
 
+    // 處理最終輸出的朋友列表 (若非管理員，只回傳代號)
+    let finalFriends = friends;
+    if (!isAdmin) {
+        // 確保所有朋友都已進入 Map (即使沒有交易紀錄)
+        friends.forEach(f => getAnonymizedName(f)); 
+        finalFriends = Object.values(friendMap).filter(n => n !== "我");
+        finalFriends = [...new Set(finalFriends)];
+        
+        // 隱藏敏感 Config
+        if (config.user_name) config.user_name = "User";
+    }
+
     const output = { 
-      categories, friends, paymentMethods, projects, config, // 【新增】回傳 projects
+      categories, friends: finalFriends, paymentMethods, projects, config, 
       transactions: transactions.slice(0, 150),
       stats: { monthlyLifeTotal, allOneTimeTotal, allLifeTotal, totalInvestment: allLifeTotal + allOneTimeTotal, debtTotal: netDebt },
-      is_admin: isAdmin // Allow frontend to know auth state
+      is_admin: isAdmin 
     };
 
     return ContentService.createTextOutput(JSON.stringify(output)).setMimeType(ContentService.MimeType.JSON);

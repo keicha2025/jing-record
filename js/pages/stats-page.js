@@ -1,3 +1,5 @@
+import { Theme } from '../theme.js';
+
 export const StatsPage = {
     template: `
     <section class="space-y-6 py-4 animate-in fade-in pb-10">
@@ -42,7 +44,6 @@ export const StatsPage = {
                    </div>
                 </div>
 
-                <!-- 專案模式下的專案選擇 -->
                 <!-- 專案模式下的專案選擇 -->
                  <div v-show="filterMode === 'project'" class="w-full pt-1">
                     <select v-model="selectedProjectId" class="w-full text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none text-gray-600 border border-transparent focus:bg-white focus:border-gray-200 transition-all">
@@ -141,21 +142,10 @@ export const StatsPage = {
 
                 if (this.filterMode === 'project') {
                     if (!this.selectedProjectId) {
-                        // 未選取專案 -> 顯示所有專案的合併統計資料 (即所有帶有 projectId 的支出)
                         return !!t.projectId; // 只回傳有 projectId 的
-                        // 或者是否應該包含所有？"專案分析"通常針對專案。
-                        // 用戶：「顯示所有專案的合併統計資料」。所以只算屬於專案的。
                     }
                     return t.projectId === this.selectedProjectId;
                 } else {
-                    // 一般模式：排除有專案ID的支出 (如果希望一般模式純粹看日常) -> 根據需求，這裡先做「包含/不含」的開關可能比較複雜，
-                    // 暫時邏輯：一般模式只看時間，但額外過濾掉標記為專案的？或者全看？
-                    // 根據需求描述：stas頁面可以「包含/不含旅遊花費」。
-                    // 簡單解法：在一般模式下，我們預設「包含所有」，但若用戶想排除旅遊，可能需要另一個開關。
-                    // 為了簡化 UI，這裡先設為「一般模式 = 依照時間篩選的所有支出」。
-                    // 如果用戶想要「不含旅遊花費」，通常是因為旅遊花費會拉高單月支出。
-                    // 讓我們加一個簡單的 checkbox 在一般模式: "排除專案支出"
-
                     const tDate = t.spendDate.split(' ')[0].replace(/\//g, '-');
                     const timeMatch = (this.dateMode === 'month') ? tDate.startsWith(this.selectedMonth) : (tDate >= this.startDate && tDate <= this.endDate);
                     if (!timeMatch) return false;
@@ -268,7 +258,7 @@ export const StatsPage = {
                     labels: data.map(d => d.name),
                     datasets: [{
                         data: data.map(d => d.total),
-                        backgroundColor: ['#4A4A4A', '#7A7A7A', '#9A9A9A', '#BDBDBD', '#D1C7BD', '#E5E5E5'],
+                        backgroundColor: Theme.colors.chart,
                         borderWidth: 0, hoverOffset: 15
                     }]
                 },
@@ -300,9 +290,9 @@ export const StatsPage = {
                         if (!meta.data[0]) return;
                         const x = meta.data[0].x; const y = meta.data[0].y;
                         ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                        ctx.font = '300 10px Noto Sans TC'; ctx.fillStyle = '#999';
+                        ctx.font = '300 10px Noto Sans TC'; ctx.fillStyle = Theme.colors.textSecondary;
                         ctx.fillText(this.centerLabel, x, y - 12);
-                        ctx.font = '400 18px Noto Sans TC'; ctx.fillStyle = '#4A4A4A';
+                        ctx.font = '400 18px Noto Sans TC'; ctx.fillStyle = Theme.colors.primary;
                         ctx.fillText(this.getCurrencySymbol + ' ' + this.formatNumber(this.centerAmount), x, y + 8);
                         ctx.restore();
                     }

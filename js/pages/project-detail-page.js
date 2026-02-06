@@ -4,11 +4,10 @@ export const ProjectDetailPage = {
     template: `
     <section class="animate-in fade-in pb-20">
         <!-- Main Content Card -->
-        <div class="bg-white p-6 rounded-[2.5rem] muji-shadow border border-gray-50 space-y-6 min-h-[60vh] relative mt-2">
+        <div class="bg-white p-6 rounded-[2.5rem] muji-shadow border border-gray-50 flex flex-col min-h-[60vh] relative mt-2">
             
             <!-- Navigation & Controls -->
-            <!-- Navigation & Controls -->
-            <div class="flex items-center justify-between pb-2">
+            <div class="flex items-center justify-between pb-2 shrink-0">
                 <button @click="$emit('back')" class="text-gray-400 hover:text-gray-600 transition-colors flex items-center space-x-1">
                     <span class="material-symbols-rounded text-xl">arrow_back</span>
                     <span class="text-[10px] tracking-widest uppercase">BACK</span>
@@ -17,12 +16,11 @@ export const ProjectDetailPage = {
                     <button v-if="!isEditing" @click="isEditing = true" class="text-gray-400 hover:text-gray-600 transition-colors">
                         <span class="material-symbols-rounded text-lg">edit</span>
                     </button>
-                    <!-- Duplicate CANCEL removed as requested -->
                 </div>
             </div>
 
-            <!-- Read Only View -->
-            <div v-if="!isEditing" class="space-y-8">
+            <!-- Read Only View (Centered Content) -->
+            <div v-if="!isEditing" class="flex-1 flex flex-col justify-center space-y-8">
                 <!-- ... content ... -->
                 <div class="text-center space-y-3">
                     <span :class="project.status === 'Active' ? 'bg-[#4A4A4A] text-white' : 'bg-gray-200 text-gray-500'" 
@@ -34,7 +32,7 @@ export const ProjectDetailPage = {
                 </div>
 
                 <!-- Stats Grid -->
-                <div class="grid grid-cols-2 gap-4 bg-gray-50 p-6 rounded-3xl">
+                <div class="grid grid-cols-2 gap-4 bg-gray-50 p-6 rounded-3xl relative">
                      <div class="text-center">
                          <p class="text-[9px] text-gray-400 uppercase tracking-widest mb-1 font-medium">總花費</p>
                          <p class="text-xl font-light text-gray-700">¥{{ formatNumber(stats.total) }}</p>
@@ -44,6 +42,11 @@ export const ProjectDetailPage = {
                          <p class="text-xl font-light text-gray-700">¥{{ formatNumber(stats.daily) }}</p>
                      </div>
                 </div>
+
+                <!-- View Details Action -->
+                <button @click="$emit('view-history', project.id)" class="w-full bg-gray-50 text-gray-400 py-4 rounded-2xl text-[10px] tracking-widest uppercase hover:bg-gray-100 hover:text-gray-600 transition-colors font-medium">
+                    查看明細
+                </button>
             </div>
 
             <!-- Edit View -->

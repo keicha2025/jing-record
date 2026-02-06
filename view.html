@@ -5,16 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>日日記 | Nichi-Nichi Log</title>
+    <title>日日記 | Nichi-Nichi Log (View Only)</title>
 
-    <!-- PWA 核心設定 -->
-    <link rel="manifest" href="manifest.json" crossorigin="use-credentials">
     <meta name="theme-color" content="#4A4A4A">
+    <!-- No Manifest for View Mode to keep it separate -->
 
     <!-- iOS 專屬優化 -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="日日記">
+    <meta name="apple-mobile-web-app-title" content="日日記 View">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2544/2544087.png">
 
     <!-- 外部資源 -->
@@ -59,70 +58,59 @@
     <div id="app" class="max-w-md mx-auto min-h-screen relative" v-cloak>
         <div v-if="loading" class="fixed inset-0 z-[100] loading-overlay flex flex-col items-center justify-center">
             <div class="w-8 h-8 border-2 border-gray-100 border-t-gray-500 rounded-full animate-spin mb-4"></div>
-            <p class="text-[10px] tracking-[0.2em] text-gray-400 uppercase font-light">Syncing...</p>
+            <p class="text-[10px] tracking-[0.2em] text-gray-400 uppercase font-light">Loading...</p>
         </div>
 
-        <app-header :app-mode="appMode" :sync-status="syncStatus" :current-tab="currentTab"
-            :history-filter="historyFilter" @retry-sync="retrySync"
+        <!-- Header -->
+        <app-header :app-mode="appMode" :sync-status="'idle'" :current-tab="currentTab" :history-filter="historyFilter"
             @clear-filter="historyFilter = { mode: 'all', categoryId: null, friendName: null, currency: null }">
         </app-header>
 
         <main class="w-full px-4 pt-4 pb-32">
             <!-- Viewer Dashboard -->
-            <view-dashboard v-if="currentTab === 'overview' && appMode === 'VIEWER'" :transactions="transactions"
-                :stats="stats" @switch-tab="currentTab = $event"></view-dashboard>
+            <view-dashboard v-if="currentTab === 'overview'" :transactions="transactions" :stats="stats"
+                :categories="categories" :fx-rate="fxRate" @switch-tab="currentTab = $event"></view-dashboard>
 
-            <!-- Regular Admin/Guest Dashboard -->
-            <overview-page v-else-if="currentTab === 'overview'" :transactions="transactions" :stats="stats"
-                :fx-rate="fxRate"
-                @go-to-history="historyFilter = { mode: $event.mode, categoryId: null, friendName: null, currency: $event.currency }; currentTab = 'history'"></overview-page>
-
+            <!-- History Page (Reused) -->
             <history-page v-if="currentTab === 'history'" :transactions="filteredTransactions" :categories="categories"
                 :payment-methods="paymentMethods" :projects="projects" @edit-item="handleEditItem"
                 @update-filter="Object.assign(historyFilter, $event)"></history-page>
 
-            <add-page v-if="currentTab === 'add'" :form="form" :categories="categories"
-                :payment-methods="paymentMethods" :friends="friends" :projects="projects" :loading="loading"
-                @toggle-currency="toggleCurrency" @submit="handleSubmit(form)"
-                @add-friend-to-list="handleAddFriendToList" @create-project="handleCreateProject"></add-page>
+            <!-- Edit Page (Reused, Read-Only enforced by appMode) -->
             <edit-page v-if="currentTab === 'edit'" :form="editForm" :categories="categories"
                 :payment-methods="paymentMethods" :friends="friends" :projects="projects" :loading="loading"
-                @submit="handleSubmit(editForm)" @delete-item="handleDelete"
-                @cancel="currentTab = 'history'; editForm = null;" @create-project="handleCreateProject"
-                @add-friend-to-list="handleAddFriendToList"></edit-page>
+                :app-mode="appMode" @cancel="currentTab = 'history'; editForm = null;"></edit-page>
+
+            <!-- Stats Page (Reused) -->
             <stats-page v-if="currentTab === 'stats'" :transactions="transactions" :categories="categories"
                 :payment-methods="paymentMethods" :fx-rate="fxRate" :projects="projects"
                 @drill-down="handleDrillDown"></stats-page>
-            <settings-page v-if="currentTab === 'settings'" :config="systemConfig" :friends="friends"
-                :transactions="transactions" :projects="projects" :app-mode="appMode"
-                @update-config="handleUpdateConfig" @register-device="handleRegisterDevice"
-                @clear-guest-data="clearGuestData" @view-friend="handleViewFriend"
+
+            <!-- Settings Page (Simplified) -->
+            <settings-page v-if="currentTab === 'settings'" :config="{}" :friends="friends" :transactions="transactions"
+                :projects="projects" :app-mode="appMode" @view-friend="handleViewFriend"
                 @view-project="handleViewProject"></settings-page>
 
+            <!-- Project Detail Page -->
             <project-detail-page v-if="currentTab === 'project-detail'" :project="selectedProject"
                 :transactions="transactions" @back="currentTab = 'settings'; selectedProject = null"
-                @update-project="handleUpdateProject" @view-history="handleViewHistory"></project-detail-page>
+                @view-history="handleViewHistory">
+            </project-detail-page>
         </main>
 
-        <app-footer v-model:current-tab="currentTab" :app-mode="appMode">
-        </app-footer>
+        <!-- Footer -->
+        <viewer-footer v-model:current-tab="currentTab" :app-mode="appMode">
+        </viewer-footer>
 
-
-        <!-- Success Modal -->
-        <!-- System Modal -->
+        <!-- System Modal (Required for Alerts) -->
         <system-modal :visible="modalState.visible" :config="modalState.config" @confirm="handleModalConfirm"
             @cancel="handleModalCancel">
         </system-modal>
     </div>
 
-    <!-- 註冊 Service Worker -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js');
-        }
-    </script>
+    <!-- Scripts -->
     <script src="./js/env.js"></script>
-    <script type="module" src="./js/app.js"></script>
+    <script type="module" src="./js/view-app.js"></script>
 </body>
 
 </html>

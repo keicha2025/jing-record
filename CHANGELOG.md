@@ -1,4 +1,24 @@
-# Changelog - 2026-02-06 Update
+# Changelog - 2026-02-06 Update (View Mode & Features)
+
+## 🚀 View Mode (Viewer)
+- **New Architecture**: Created dedicated `view.html`, `js/view-app.js`, and `ViewDashboard` component to isolate Viewer logic from the main Admin/Guest app.
+- **FX Rate Fix**: Fixed an issue where the exchange rate was defaulting to 0.22. Now correctly fetches `config.fx_rate` from GAS or Guest settings (e.g., 0.21).
+- **Chart Reactivity**: Resolved a critical bug where Chart.js instances were wrapped in Vue proxies, causing `TypeError` and rendering failures. Implemented proper cleanup logic.
+- **UI Improvements**: Updated the View Mode dashboard layout and currency toggle style.
+
+## ✨ New Features
+- **Project Search Integration**:
+  - Added a "View Details" (查看明細) button to the Project Detail page.
+  - Clicking "View Details" now filters the History page by the project's ID.
+  - Enhanced the search bar to support searching by **Project Name** or **Project ID**.
+- **Guest Mode Enhancements**:
+  - **Settings Persistence**: Guest settings (User Name, FX Rate) now take precedence over remote default data during import.
+  - **UI Refinement**: Renamed "Clear Data" and "Import Default Data" actions for clarity.
+
+## 🐛 Bug Fixes
+- **Layout Fixes**: Corrected the Project Detail page layout to center content vertically.
+- **Event Handling**: Fixed missing event listeners for `view-history` in both `index.html` and `view.html`.
+
 
 ## 🎨 UI & Layout Updates
 - **Global Layout Unification**:

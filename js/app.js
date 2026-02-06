@@ -202,9 +202,15 @@ createApp({
             }
             if (filter.currency) list = list.filter(t => t.originalCurrency === filter.currency);
 
-            // Keyword Search (Enhanced)
+            // Keyword Search (Enhanced with Project Support)
             if (filter.keyword) {
                 const k = filter.keyword.toLowerCase();
+
+                // Find matching projects
+                const matchingProjectIds = projects.value
+                    .filter(p => p.name.toLowerCase().includes(k) || p.id.toLowerCase() === k)
+                    .map(p => p.id);
+
                 list = list.filter(t => {
                     // Pre-fetch names for search
                     const cat = categories.value.find(c => c.id === t.categoryId);
@@ -218,13 +224,24 @@ createApp({
                         (t.note && t.note.toLowerCase().includes(k)) ||
                         (t.friendName && t.friendName.toLowerCase().includes(k)) ||
                         catName.includes(k) ||
-                        pmName.includes(k)
+                        pmName.includes(k) ||
+                        (t.projectId && matchingProjectIds.includes(t.projectId)) || // Match by Project Name
+                        (t.projectId && t.projectId.toLowerCase() === k) // Match by Exact ID
                     );
                 });
             }
 
             return list;
         });
+
+        // ... loadData ...
+
+        const handleViewHistory = (keyword) => {
+            // If keyword looks like a project ID (e.g., starts with proj_), stick to it.
+            // Or just put it in keyword field.
+            historyFilter.value = { mode: 'all', categoryId: null, friendName: null, currency: null, keyword: keyword };
+            currentTab.value = 'history';
+        };
 
         const loadData = async () => {
             loading.value = true;
@@ -255,6 +272,41 @@ createApp({
                             // Let's import friends if ON so dropdowns work, but transactions are anonymized.
                             friends.value = data.friends || [];
                             projects.value = data.projects || [];
+
+                            // 【Fix】Import FX Rate for Guest Demo
+                            // 【Fix】Import FX Rate for Guest Demo
+                            if (data.config) {
+                                // Logic: Only apply remote config if user hasn't customized local settings
+                                // We trust 'savedGuestConfig' loaded at start or current 'systemConfig' state
+                                const currentLocal = systemConfig.value;
+
+                                // Merge remote config but let local values take precedence if they exist
+                                // Specifically handle FX Rate and Name
+                                const newConfig = { ...data.config, ...currentLocal };
+
+                                // If local fx_rate is default (0.22) and remote is different, maybe update?
+                                // User rule: "If guest changed it... use guest".
+                                // If guest hasn't changed it (value is 0.22 default), and remote is different (e.g. 0.21), use remote?
+                                // But how do we know if 0.22 is "touched" or "default"?
+                                // Simplest robust way: If we are importing, we assume we want data.
+                                // But if user *explicitly* went to settings and hit update, it's saved in local storage.
+                                // Let's check `savedGuestConfig` from localStorage directly (it was parsed at setup).
+                                // If `savedGuestConfig.fx_rate` exists, use it.
+
+                                if (savedGuestConfig.fx_rate) {
+                                    newConfig.fx_rate = savedGuestConfig.fx_rate;
+                                } else if (data.config.fx_rate) {
+                                    // No local override, use remote
+                                    newConfig.fx_rate = parseFloat(data.config.fx_rate);
+                                }
+
+                                if (savedGuestConfig.user_name) {
+                                    newConfig.user_name = savedGuestConfig.user_name;
+                                }
+
+                                systemConfig.value = newConfig;
+                                fxRate.value = parseFloat(systemConfig.value.fx_rate);
+                            }
 
                             const fetchedTransactions = data.transactions || [];
                             if (fetchedTransactions.length > 0) {
@@ -542,6 +594,7 @@ createApp({
             },
             handleViewFriend: (n) => { historyFilter.value = { mode: 'all', categoryId: null, friendName: n, currency: null, keyword: '' }; currentTab.value = 'history'; },
             handleViewProject: (p) => { selectedProject.value = p; currentTab.value = 'project-detail'; },
+            handleViewHistory,
             handleUpdateProject: async () => { await loadData(); },
             handleRegisterDevice: (pwd) => {
                 if (!pwd) return;

@@ -65,27 +65,19 @@ export const SystemModal = {
             return map[this.config.type] || 'info';
         },
         iconBgClass() {
-            const map = {
-                success: 'bg-gray-50',
-                transaction_success: 'bg-gray-50',
-                error: 'bg-red-50',
-                confirm: 'bg-gray-50',
-                warning: 'bg-amber-50'
-            };
-            return map[this.config.type] || 'bg-gray-50';
+            // 所有狀態統一使用灰色背景
+            return 'bg-gray-50';
         },
         iconColorClass() {
             const map = {
                 success: 'text-[#4A4A4A]',
                 transaction_success: 'text-[#4A4A4A]',
-                error: 'text-red-400',
-                confirm: 'text-gray-400',
-                warning: 'text-amber-400'
+                // error, warning, confirm 使用灰色
             };
             return map[this.config.type] || 'text-gray-400';
         },
         primaryBtnClass() {
-            if (this.config.type === 'error') return 'bg-red-400 shadow-red-100';
+            // 所有按鈕統一使用主色
             return 'bg-[#4A4A4A] shadow-gray-200';
         },
         currencySymbol() {
