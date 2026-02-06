@@ -55,16 +55,16 @@ function doGet(e) {
       if (!r[0]) return null;
       const spendDate = new Date(r[2]);
       const type = r[3];
-      const amountJPY = parseFloat(r[6] || 0);
-      const isOneTime = r[9] === true;
-      const personalShare = parseFloat(r[11] || 0);
-      const debtAmount = parseFloat(r[12] || 0);
-      const originalCurrency = r[16] || "JPY"; 
-      const projectId = r[17] || ""; 
+      const amount = parseFloat(r[6] || 0); // 原始金額 (G 欄)
+      const isOneTime = r[8] === true;      // 欄位往左移一格 (原本 9)
+      const personalShare = parseFloat(r[10] || 0); // 原本 11
+      const debtAmount = parseFloat(r[11] || 0);    // 原本 12
+      const originalCurrency = r[15] || "JPY";     // 原本 16
+      const projectId = r[16] || "";               // 原本 17
       
-      let friendName = r[14];
-      let payer = r[15] || "我";
-      let note = r[13];
+      let friendName = r[13]; // 原本 14
+      let payer = r[14] || "我"; // 原本 15
+      let note = r[12]; // 原本 13
 
       // 若非管理員，進行去識別化
       if (!isAdmin) {
@@ -73,22 +73,50 @@ function doGet(e) {
           payer = getAnonymizedName(payer);
       }
 
+      // 動態換算 JPY 用於統計 (Backward compatibility for stats)
+      const fxRate = parseFloat(config.fx_rate || 0.22);
+      const amountJPY = originalCurrency === 'JPY' ? amount : amount / fxRate;
+      const amountTWD = originalCurrency === 'TWD' ? amount : amount * fxRate;
+      
+      // 債務對應日幣金額
+      const debtInJPY = originalCurrency === 'JPY' ? debtAmount : debtAmount / fxRate;
+      const shareInJPY = originalCurrency === 'JPY' ? personalShare : personalShare / fxRate;
+
       if (type === '支出') {
-        netDebt += debtAmount; 
-        if (isOneTime) allOneTimeTotal += personalShare;
+        netDebt += debtInJPY; 
+        if (isOneTime) allOneTimeTotal += shareInJPY;
         else {
-          allLifeTotal += personalShare;
-          if (spendDate.getMonth() === now.getMonth() && spendDate.getFullYear() === now.getFullYear()) {
-            monthlyLifeTotal += personalShare;
+          allLifeTotal += shareInJPY;
+          // 取得 YYYY/MM 部分，避免時區偏移影響統計
+          const dateStr = String(r[2]);
+          const dateMatch = dateStr.match(/^(\d{4})[/-](\d{2})/);
+          if (dateMatch) {
+            const rowYear = parseInt(dateMatch[1]);
+            const rowMonth = parseInt(dateMatch[2]);
+            if (rowYear === now.getFullYear() && rowMonth === (now.getMonth() + 1)) {
+              monthlyLifeTotal += shareInJPY;
+            }
           }
         }
       } else if (type === '收款') {
         netDebt -= amountJPY; 
       }
 
+      // 所見即所得：回傳原始儲存格字串。避免 GAS 時區偏移。
+      let spendDateVal = r[2];
+      let spendDateStr = "";
+      if (typeof spendDateVal === 'string') {
+          spendDateStr = spendDateVal;
+      } else {
+          // 只有當出現非預期的舊 Date 物件時，以腳本時區格式化作為後備
+          spendDateStr = Utilities.formatDate(new Date(spendDateVal), Session.getScriptTimeZone(), "yyyy/MM/dd HH:mm");
+      }
+
       return {
-        row: index + 2, id: r[0], spendDate: Utilities.formatDate(spendDate, "GMT+9", "yyyy/MM/dd HH:mm"),
-        type, name: r[4], categoryId: r[5], amountJPY, amountTWD: parseFloat(r[7] || 0), paymentMethod: r[8],
+        row: index + 2, id: r[0], spendDate: spendDateStr,
+        type, name: r[4], categoryId: r[5], amountJPY, amountTWD, 
+        originalAmount: amount, // 新增：回傳原始金額
+        paymentMethod: r[7],    // 原端 8
         isOneTime, friendName: friendName, 
         note: note,
         personalShare, payer: payer, debtAmount,
@@ -200,27 +228,25 @@ function doPost(e) {
     const rowData = [
       params.id || "tx_" + new Date().getTime(),
       new Date(),
-      new Date(params.spendDate),
+      params.spendDate, // 應為 "YYYY/MM/DD HH:mm UTC+X" 字串
       params.type,
       params.name,
       params.categoryId,
-      params.amountJPY,
-      params.amountTWD,
-      params.paymentMethod,
-      params.isOneTime,
-      params.isSplit,
-      params.personalShare,
-      params.debtAmount,
-      params.note,
-      params.friendName || "",
-      params.payer || "我",
-      params.currency,
-      params.projectId || "" // 【新增】第 18 欄：ProjectID
+      params.amount,          // 第 7 欄 (Index 6): 原始金額
+      params.paymentMethod,   // 第 8 欄 (Index 7): 支付方式 (原本 8 -> 7)
+      params.isOneTime,       // 第 9 欄 (Index 8): 是否一次性
+      params.isSplit,         // 第 10 欄 (Index 9)
+      params.personalShare,   // 第 11 欄 (Index 10)
+      params.debtAmount,      // 第 12 欄 (Index 11)
+      params.note,            // 第 13 欄 (Index 12)
+      params.friendName || "",// 第 14 欄 (Index 13)
+      params.payer || "我",    // 第 15 欄 (Index 14)
+      params.currency,        // 第 16 欄 (Index 15): 幣別
+      params.projectId || ""  // 第 17 欄 (Index 16): ProjectID
     ];
 
     if (params.action === 'edit' && params.row) {
-      // 這裡的 17 要改為 18
-      transSheet.getRange(params.row, 1, 1, 18).setValues([rowData]);
+      transSheet.getRange(params.row, 1, 1, 17).setValues([rowData]);
     } else {
       transSheet.appendRow(rowData);
     }
@@ -238,4 +264,68 @@ function saveFriend(ss, name) {
   if (name && !currentFriends.includes(name)) {
     friendSheet.appendRow(["fr_" + new Date().getTime(), name]);
   }
+}
+
+/**
+ * 遷移現有資料：
+ * 1. 根據 OriginalCurrency (Q 欄) 決定要將 JPY 或 TWD 金額存入 G 欄。
+ * 2. 刪除 H 欄 (Amount TWD)。
+ * 3. 【全新】標準化日期格式：將所有 C 欄日期轉換為 "YYYY/MM/DD HH:mm UTC+8" 字串。
+ */
+function migrateLegacyData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Transactions");
+  const data = sheet.getDataRange().getValues();
+  const rows = data.length;
+  
+  // 檢查標題列，輔助判定當前結構
+  const header = data[0];
+  const isOldStructure = header.length >= 18; // 舊結構通常有 18 欄以上
+
+  for (let i = 1; i < rows; i++) {
+    const row = data[i];
+    
+    // 1. 處理金額遷移 (如果是舊結構)
+    if (isOldStructure) {
+      const amountJPY = row[6];
+      const amountTWD = row[7];
+      const originalCurrency = row[15]; // P 欄 (Index 15)
+      let originalAmount = (originalCurrency === "TWD") ? amountTWD : amountJPY;
+      sheet.getRange(i + 1, 7).setValue(originalAmount);
+    }
+
+    // 2. 處理日期標準化 (C 欄, Index 2)
+    let dateVal = row[2];
+    let normalizedDateStr = "";
+    
+    if (dateVal instanceof Date) {
+      // 舊資料視為台灣時間 UTC+8
+      normalizedDateStr = Utilities.formatDate(dateVal, "GMT+8", "yyyy/MM/dd HH:mm") + " UTC+8";
+    } else if (typeof dateVal === 'string') {
+      // 如果已經是字串但格式不符 (例如包含 "(" 或 "-" )，則進行修復
+      if (dateVal.includes("(") || dateVal.includes("-")) {
+         // 將 2026-02-06 21:54 (+0800) 轉為 2026/02/06 21:54 UTC+8
+         let cleanDate = dateVal.split(" (")[0].replace(/-/g, "/");
+         let offset = "";
+         if (dateVal.includes("+0800")) offset = "UTC+8";
+         else if (dateVal.includes("+0900")) offset = "UTC+9";
+         else offset = "UTC+8"; // 預設
+         normalizedDateStr = cleanDate + " " + offset;
+      } else {
+         normalizedDateStr = dateVal; // 正確格式則略過
+      }
+    }
+    
+    if (normalizedDateStr) {
+       sheet.getRange(i + 1, 3).setValue(normalizedDateStr);
+    }
+  }
+
+  // 如果是舊結構，最後才執行刪除欄位與更名
+  if (isOldStructure) {
+    sheet.deleteColumn(8); // 刪除 H 欄 (Amount TWD)
+    sheet.getRange(1, 7).setValue("Amount");
+  }
+  
+  Logger.log("遷移與日期標準化完成！");
 }

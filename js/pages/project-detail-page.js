@@ -35,11 +35,11 @@ export const ProjectDetailPage = {
                 <div class="grid grid-cols-2 gap-4 bg-gray-50 p-6 rounded-3xl relative">
                      <div class="text-center">
                          <p class="text-[9px] text-gray-400 uppercase tracking-widest mb-1 font-medium">總花費</p>
-                         <p class="text-xl font-light text-gray-700">¥{{ formatNumber(stats.total) }}</p>
+                         <p class="text-xl font-light text-gray-700">{{ currencySymbol }}{{ formatNumber(stats.total) }}</p>
                      </div>
                      <div class="text-center border-l border-gray-200">
                          <p class="text-[9px] text-gray-400 uppercase tracking-widest mb-1 font-medium">平均日花費</p>
-                         <p class="text-xl font-light text-gray-700">¥{{ formatNumber(stats.daily) }}</p>
+                         <p class="text-xl font-light text-gray-700">{{ currencySymbol }}{{ formatNumber(stats.daily) }}</p>
                      </div>
                 </div>
 
@@ -88,7 +88,7 @@ export const ProjectDetailPage = {
         </div>
     </section>
     `,
-    props: ['project', 'transactions'],
+    props: ['project', 'transactions', 'displayCurrency', 'fxRate'],
     inject: ['dialog'],
     data() {
         return {
@@ -98,6 +98,7 @@ export const ProjectDetailPage = {
         };
     },
     computed: {
+        currencySymbol() { return this.displayCurrency === 'TWD' ? '$' : '¥'; },
         stats() {
             if (!this.project || !this.transactions) return { total: 0, daily: 0 };
 
@@ -106,7 +107,16 @@ export const ProjectDetailPage = {
 
             let total = 0;
             txs.forEach(t => {
-                total += parseFloat(t.amountJPY || 0);
+                const amt = Number(t.originalAmount || (t.originalCurrency === 'TWD' ? t.amountTWD : t.amountJPY));
+                const origCurr = t.originalCurrency || 'JPY';
+
+                if (origCurr === this.displayCurrency) {
+                    total += amt;
+                } else if (this.displayCurrency === 'JPY') {
+                    total += (amt / this.fxRate);
+                } else {
+                    total += (amt * this.fxRate);
+                }
             });
 
             // Use date range for daily avg

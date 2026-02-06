@@ -59,7 +59,9 @@ export const EditPage = {
                 <!-- 3. 日期 -->
                 <div class="flex items-center justify-between px-2 py-2 border-b border-gray-50">
                     <span class="text-[10px] text-gray-400 uppercase tracking-widest">消費日期</span>
-                    <div v-if="isReadOnly" class="text-sm text-gray-600">{{ form.spendDate.replace('T', ' ') }}</div>
+                    <div v-if="isReadOnly" class="text-right">
+                        <div class="text-sm text-gray-600">{{ form.spendDate }}</div>
+                    </div>
                     <input v-else type="datetime-local" v-model="form.spendDate" class="text-sm bg-transparent outline-none text-right cursor-pointer">
                 </div>
 

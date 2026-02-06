@@ -115,7 +115,7 @@ export const StatsPage = {
         </div>
     </section>
     `,
-    props: ['transactions', 'categories', 'fxRate', 'paymentMethods', 'projects'],
+    props: ['transactions', 'categories', 'fxRate', 'paymentMethods', 'projects', 'displayCurrency'],
     data() {
         const now = new Date();
         return {
@@ -123,7 +123,7 @@ export const StatsPage = {
             selectedMonth: now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0'),
             startDate: now.toISOString().slice(0, 10),
             endDate: now.toISOString().slice(0, 10),
-            baseCurrency: 'JPY',
+            baseCurrency: this.displayCurrency || 'JPY',
             isMyShareOnly: true,
             chartInstance: null,
             centerAmount: 0,

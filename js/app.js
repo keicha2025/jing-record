@@ -38,7 +38,11 @@ createApp({
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             return now.toISOString().slice(0, 16);
         };
-        const currentTab = ref('add');
+        const currentTab = ref('overview');
+        const displayCurrency = ref('JPY');
+        const toggleDisplayCurrency = () => {
+            displayCurrency.value = displayCurrency.value === 'JPY' ? 'TWD' : 'JPY';
+        };
         const loading = ref(false);
         const lastSaved = ref(null);
 
@@ -337,9 +341,15 @@ createApp({
 
 
                     // Recalc Stats
-                    let total = 0;
-                    transactions.value.forEach(t => { if (!t.isOneTime && t.type === '支出') total += parseFloat(t.amountJPY); });
-                    stats.value = { monthlyLifeTotal: total, allOneTimeTotal: 0, debtTotal: 0, totalInvestment: 0 };
+                    let totalJPY = 0;
+                    transactions.value.forEach(t => {
+                        if (t.type === '支出' && !t.isOneTime) {
+                            // Guest mode: Derive JPY from originalAmount if isRemote, or just amount if not
+                            const amt = parseFloat(t.amountJPY || t.amount || 0);
+                            totalJPY += amt;
+                        }
+                    });
+                    stats.value = { monthlyLifeTotal: totalJPY, allOneTimeTotal: 0, debtTotal: 0, totalInvestment: 0 };
 
                     return;
                 }
@@ -410,11 +420,30 @@ createApp({
             // Prepare Payload
             const payload = {
                 ...dataToSave,
-                amountJPY: dataToSave.currency === 'JPY' ? dataToSave.amount : dataToSave.amount / fxRate.value,
-                amountTWD: dataToSave.currency === 'TWD' ? dataToSave.amount : dataToSave.amount * fxRate.value,
-                id: dataToSave.id || "tx_" + new Date().getTime(), // Client-side ID generation
-                spendDate: dataToSave.spendDate // Keep string or date? Backend expects string readable by new Date()
+                amount: parseFloat(dataToSave.amount), // 核心：傳送原始金額
+                currency: dataToSave.currency,
+                id: dataToSave.id || "tx_" + new Date().getTime()
             };
+
+            // 標準化日期字串 (例如：2026/02/06 21:54 UTC+8)
+            // 優先選用原始時區 (Edit 模式時鎖定)
+            let offsetStr = "";
+            if (dataToSave.action === 'edit' && dataToSave.originalOffset) {
+                offsetStr = dataToSave.originalOffset;
+            } else {
+                const tzOffset = -new Date().getTimezoneOffset();
+                const hours = Math.floor(Math.abs(tzOffset) / 60);
+                const sign = tzOffset >= 0 ? '+' : '-';
+                offsetStr = `UTC${sign}${hours}`;
+            }
+            payload.spendDate = `${dataToSave.spendDate.replace('T', ' ').replace(/-/g, '/')} ${offsetStr}`;
+
+            // 用於 Optimistic UI 的換算 (用於統計與顯示)
+            const amt = payload.amount;
+            payload.amountJPY = payload.currency === 'JPY' ? amt : amt / fxRate.value;
+            payload.amountTWD = payload.currency === 'TWD' ? amt : amt * fxRate.value;
+            payload.originalAmount = amt;
+            payload.originalCurrency = payload.currency;
 
             // OPTIMISTIC UPDATE: Update local state immediately
             if (dataToSave.action === 'edit') {
@@ -531,11 +560,20 @@ createApp({
         };
 
         const handleEditItem = (item) => {
-            const formattedDate = item.spendDate ? item.spendDate.replace(/\//g, "-").replace(" ", "T") : getLocalISOString();
+            // 解析日期字串，移除時區標籤以符合 datetime-local 格式 (YYYY-MM-DDTHH:mm)
+            let formattedDate = getLocalISOString();
+            let originalOffset = "";
+            if (item.spendDate) {
+                const parts = item.spendDate.split(' UTC');
+                const datePart = parts[0]; // "YYYY/MM/DD HH:mm"
+                if (parts.length > 1) originalOffset = "UTC" + parts[1];
+                formattedDate = datePart.replace(/\//g, "-").replace(" ", "T");
+            }
             const hasSplit = item.friendName && item.friendName.trim() !== "";
             editForm.value = JSON.parse(JSON.stringify({
                 ...item,
                 spendDate: formattedDate,
+                originalOffset: originalOffset, // 鎖定原始時區標籤
                 amount: (item.originalCurrency === 'TWD' ? item.amountTWD : item.amountJPY),
                 currency: item.originalCurrency || 'JPY',
                 action: 'edit',
@@ -558,13 +596,15 @@ createApp({
             paymentMethods,
             systemConfig,
             appMode,
+            displayCurrency,
+            toggleDisplayCurrency,
             localData: () => JSON.parse(localStorage.getItem('guest_data')),
             clear: () => { localStorage.removeItem('guest_data'); window.location.reload(); }
         };
 
         return {
             currentTab, loading, categories, friends, paymentMethods, projects, transactions, filteredTransactions, historyFilter, form, editForm, stats, systemConfig, fxRate, selectedProject,
-            appMode, syncStatus, syncQueue,
+            appMode, syncStatus, syncQueue, displayCurrency, toggleDisplayCurrency,
             handleSubmit, handleDelete, handleEditItem,
             formatNumber: (n) => new Intl.NumberFormat().format(Math.round(n || 0)),
             getTabIcon,

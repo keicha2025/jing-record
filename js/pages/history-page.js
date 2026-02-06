@@ -14,7 +14,7 @@ export const HistoryPage = {
 
         <div v-else v-for="(group, dateKey) in groupedTransactions" :key="dateKey" class="space-y-3">
              <div class="py-2 mb-2">
-                 <span class="text-[10px] font-medium text-gray-400 bg-[#F7F7F7] px-2 py-1 rounded-full ml-4 shadow-sm">{{ formatMonth(group.month) }}</span>
+                 <span class="text-[10px] font-medium text-gray-400 bg-[#F7F7F7] px-2 py-1 rounded-full ml-4 shadow-sm">{{ group.month }}</span>
              </div>
              
              <div v-for="item in group.items" :key="item.id" 
@@ -27,7 +27,7 @@ export const HistoryPage = {
                     <div class="flex flex-col min-w-0 flex-1 pr-2">
                         <span class="text-sm font-medium text-gray-700 truncate block">{{ item.name }}</span>
                         <div class="flex flex-wrap items-center gap-x-2 mt-0.5 text-[9px]">
-                            <span class="text-gray-300 whitespace-nowrap">{{ item.spendDate.split('T')[0] }} · {{ getPaymentName(item.paymentMethod) }}</span>
+                            <span class="text-gray-300 whitespace-nowrap">{{ item.spendDate.split(' ')[0] }} · {{ getPaymentName(item.paymentMethod) }}</span>
                             <span v-if="item.payer !== '我' && item.type === '支出'" class="bg-gray-100 text-gray-500 px-1.5 rounded whitespace-nowrap">{{ item.payer }} 付款</span>
                             <span v-if="item.type === '收款'" class="bg-gray-100 text-gray-400 px-1.5 rounded whitespace-nowrap">{{ item.friendName }} 還款</span>
                             <span v-if="item.projectId" class="text-gray-300 truncate max-w-[80px]">{{ getProjectName(item.projectId) }}</span>
@@ -36,10 +36,10 @@ export const HistoryPage = {
                 </div>
                 <div class="text-right">
                     <p class="text-sm font-medium" :class="getSignClass(item.type)">
-                        {{ getSign(item.type) }} {{ getCurrencySymbol(item.originalCurrency) }} {{ formatNumber(item.type === '收款' ? item.amountJPY : item.personalShare) }}
+                        {{ getSign(item.type) }} {{ getCurrencySymbol(item.originalCurrency) }} {{ formatNumber(item.type === '收款' ? (item.originalAmount || (item.originalCurrency === 'TWD' ? item.amountTWD : item.amountJPY)) : item.personalShare) }}
                     </p>
                     <div v-if="item.debtAmount !== 0" class="text-[8px] mt-0.5 font-medium" :class="item.debtAmount > 0 ? 'text-gray-400' : 'text-red-300'">
-                        {{ item.debtAmount > 0 ? '債權 +' : '債務 ' }} ¥ {{ formatNumber(Math.abs(item.debtAmount)) }}
+                        {{ item.debtAmount > 0 ? '債權 +' : '債務 ' }} {{ getCurrencySymbol(item.originalCurrency) }} {{ formatNumber(Math.abs(item.debtAmount)) }}
                     </div>
                 </div>
             </div>
@@ -56,8 +56,8 @@ export const HistoryPage = {
         groupedTransactions() {
             const groups = {};
             this.transactions.forEach(t => {
-                const date = t.spendDate || ''; // YYYY-MM-DDTHH:mm
-                const monthKey = date.slice(0, 7); // YYYY-MM
+                const date = t.spendDate || ''; // YYYY/MM/DD HH:mm UTC+X
+                const monthKey = date.substring(0, 7); // YYYY/MM
                 if (!groups[monthKey]) groups[monthKey] = [];
                 groups[monthKey].push(t);
             });
