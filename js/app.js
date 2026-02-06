@@ -220,13 +220,13 @@ createApp({
                     const pmName = pm ? pm.name.toLowerCase() : (t.paymentMethod || '').toLowerCase();
 
                     return (
-                        (t.name && t.name.toLowerCase().includes(k)) ||
-                        (t.note && t.note.toLowerCase().includes(k)) ||
-                        (t.friendName && t.friendName.toLowerCase().includes(k)) ||
+                        (t.name && String(t.name).toLowerCase().includes(k)) ||
+                        (t.note && String(t.note).toLowerCase().includes(k)) ||
+                        (t.friendName && String(t.friendName).toLowerCase().includes(k)) ||
                         catName.includes(k) ||
                         pmName.includes(k) ||
                         (t.projectId && matchingProjectIds.includes(t.projectId)) || // Match by Project Name
-                        (t.projectId && t.projectId.toLowerCase() === k) // Match by Exact ID
+                        (t.projectId && String(t.projectId).toLowerCase() === k) // Match by Exact ID
                     );
                 });
             }
@@ -243,127 +243,107 @@ createApp({
             currentTab.value = 'history';
         };
 
-        const loadData = async () => {
-            loading.value = true;
+        const loadData = async (isSilent = false) => {
+            if (!isSilent) loading.value = true;
             try {
                 if (appMode.value === 'GUEST') {
-                    // Load from LocalStorage for Guest Persistence
+                    // 1. Load Local Transactions (Always)
                     const localData = localStorage.getItem('guest_data');
+                    let localTransactions = [];
                     if (localData) {
                         const parsed = JSON.parse(localData);
-                        transactions.value = parsed.transactions || [];
-                        // Recalculate stats for guest? Or just mock.
-                        // Simplified calc for guest stats
-                        let total = 0;
-                        transactions.value.forEach(t => { if (!t.isOneTime && t.type === '支出') total += parseFloat(t.amountJPY); });
-                        stats.value = { monthlyLifeTotal: total, allOneTimeTotal: 0, debtTotal: 0, totalInvestment: 0 };
-                    } else {
-                        transactions.value = [];
+                        localTransactions = parsed.transactions || [];
                     }
-                    if (systemConfig.value.import_default) {
-                        try {
-                            const data = await API.fetchInitialData('');
-                            categories.value = data.categories || [];
-                            paymentMethods.value = data.paymentMethods || [];
 
-                            // If ON, also import Projects and Masked Transactions
-                            // Friends? User didn't explicitly forbid, but said "OFF only Cat+PM". So ON implies others ok.
-                            // But usually Guest wants clean slate friend list?
-                            // Let's import friends if ON so dropdowns work, but transactions are anonymized.
-                            friends.value = data.friends || [];
-                            projects.value = data.projects || [];
+                    // 2. Fetch Metadata & Config (Always try, fallback to hardcoded)
+                    let remoteTransactions = [];
+                    try {
+                        // Attempt to fetch Initial Data for Metadata
+                        // Note: If offline, this will throw.
+                        const data = await API.fetchInitialData('');
 
-                            // 【Fix】Import FX Rate for Guest Demo
-                            // 【Fix】Import FX Rate for Guest Demo
-                            if (data.config) {
-                                // Logic: Only apply remote config if user hasn't customized local settings
-                                // We trust 'savedGuestConfig' loaded at start or current 'systemConfig' state
-                                const currentLocal = systemConfig.value;
+                        // Metadata (Always use remote if available)
+                        categories.value = data.categories || [];
+                        paymentMethods.value = data.paymentMethods || [];
+                        friends.value = data.friends || []; // Load friends for dropdowns
+                        projects.value = data.projects || [];
 
-                                // Merge remote config but let local values take precedence if they exist
-                                // Specifically handle FX Rate and Name
-                                const newConfig = { ...data.config, ...currentLocal };
+                        // Config Logic
+                        if (data.config) {
+                            const currentLocal = systemConfig.value;
+                            const newConfig = { ...data.config, ...currentLocal };
 
-                                // If local fx_rate is default (0.22) and remote is different, maybe update?
-                                // User rule: "If guest changed it... use guest".
-                                // If guest hasn't changed it (value is 0.22 default), and remote is different (e.g. 0.21), use remote?
-                                // But how do we know if 0.22 is "touched" or "default"?
-                                // Simplest robust way: If we are importing, we assume we want data.
-                                // But if user *explicitly* went to settings and hit update, it's saved in local storage.
-                                // Let's check `savedGuestConfig` from localStorage directly (it was parsed at setup).
-                                // If `savedGuestConfig.fx_rate` exists, use it.
+                            // Priority: Saved Guest Config > Remote Config
+                            if (savedGuestConfig.fx_rate) newConfig.fx_rate = savedGuestConfig.fx_rate;
+                            else if (data.config.fx_rate) newConfig.fx_rate = parseFloat(data.config.fx_rate);
 
-                                if (savedGuestConfig.fx_rate) {
-                                    newConfig.fx_rate = savedGuestConfig.fx_rate;
-                                } else if (data.config.fx_rate) {
-                                    // No local override, use remote
-                                    newConfig.fx_rate = parseFloat(data.config.fx_rate);
-                                }
+                            if (savedGuestConfig.user_name) newConfig.user_name = savedGuestConfig.user_name;
 
-                                if (savedGuestConfig.user_name) {
-                                    newConfig.user_name = savedGuestConfig.user_name;
-                                }
+                            systemConfig.value = newConfig;
+                            fxRate.value = parseFloat(systemConfig.value.fx_rate);
+                        }
 
-                                systemConfig.value = newConfig;
-                                fxRate.value = parseFloat(systemConfig.value.fx_rate);
-                            }
-
+                        // Store Remote Transactions if Toggle is ON
+                        if (systemConfig.value.import_default) {
                             const fetchedTransactions = data.transactions || [];
                             if (fetchedTransactions.length > 0) {
-                                // Alias Logic (Override masking above to be smarter)
+                                // Alias Logic
                                 const aliasMap = new Map();
                                 let aliasCount = 1;
                                 const getAlias = (name) => {
                                     if (!name || name === '我') return name;
-                                    if (!aliasMap.has(name)) { // Assign new alias
-                                        aliasMap.set(name, '友' + aliasCount++);
-                                    }
+                                    if (!aliasMap.has(name)) aliasMap.set(name, '友' + aliasCount++);
                                     return aliasMap.get(name);
                                 };
-
-                                transactions.value = fetchedTransactions.map(t => ({
+                                remoteTransactions = fetchedTransactions.map(t => ({
                                     ...t,
+                                    // Fix: Normalize date format to YYYY-MM-DDTHH:mm for consistent grouping
+                                    spendDate: t.spendDate ? t.spendDate.replace(/\//g, "-").replace(" ", "T") : '',
                                     note: '',
                                     friendName: getAlias(t.friendName),
-                                    payer: getAlias(t.payer) // Map payer to alias if it's a friend
+                                    payer: getAlias(t.payer),
+                                    isRemote: true // Mark as remote
                                 }));
-
-                                // Update friends list to match aliases
+                                // Also update friends list aliases
                                 friends.value = Array.from(aliasMap.values()).filter(n => n !== '我');
-
-                                // Recalculate basic stats
-                                let total = 0;
-                                transactions.value.forEach(t => { if (!t.isOneTime && t.type === '支出') total += parseFloat(t.amountJPY); });
-                                stats.value = { monthlyLifeTotal: total, allOneTimeTotal: 0, debtTotal: 0, totalInvestment: 0 };
-                            } else {
-                                transactions.value = [];
                             }
-                        } catch (e) {
-                            console.error("Failed to fetch defaults", e);
-                            dialog.alert("無法取得預設資料：請檢查網路或 Google Script 權限 (需設為 Anyone)", 'error');
-                            // Fallback
-                            categories.value = [{ id: 'cat_001', name: '餐飲' }, { id: 'cat_999', name: '其他' }];
-                            friends.value = [];
-                            paymentMethods.value = [{ id: 'pm_01', name: '現金' }];
                         }
-                    } else {
-                        // OFF: Only Categories & Payment Methods
-                        categories.value = [
-                            { id: 'cat_001', name: '餐飲', icon: 'restaurant' },
-                            { id: 'cat_002', name: '交通', icon: 'train' },
-                            { id: 'cat_003', name: '購物', icon: 'shopping_bag' },
-                            { id: 'cat_004', name: '娛樂', icon: 'movie' },
-                            { id: 'cat_999', name: '其他', icon: 'more_horiz' }
-                        ];
-                        // Ensure icons are present for UI stability
-                        friends.value = [];
-                        projects.value = [];
-                        paymentMethods.value = [{ id: 'pm_01', name: '現金' }, { id: 'pm_02', name: 'PayPay' }];
-                        transactions.value = []; // Clear transactions if OFF
+
+                    } catch (e) {
+                        console.warn("Guest Online Fetch Failed (Offline Use)", e);
+                        // Fallback: If no metadata loaded ever, use hardcoded.
+                        if (categories.value.length === 0) {
+                            categories.value = [
+                                { id: 'cat_001', name: '餐飲', icon: 'restaurant' },
+                                { id: 'cat_002', name: '交通', icon: 'train' },
+                                { id: 'cat_003', name: '購物', icon: 'shopping_bag' },
+                                { id: 'cat_004', name: '娛樂', icon: 'movie' },
+                                { id: 'cat_999', name: '其他', icon: 'more_horiz' }
+                            ];
+                            paymentMethods.value = [{ id: 'pm_01', name: '現金' }, { id: 'pm_02', name: 'PayPay' }];
+                        }
                     }
-                    projects.value = [];
+
+                    // 3. Merge: Local + Remote (if ON)
+                    // If toggle is OFF, remoteTransactions is empty.
+                    // Important: Reset transactions.value to merged list
+                    let merged = [...localTransactions, ...remoteTransactions];
+
+                    // SORTING FIX: Sort by spendDate descending
+                    merged.sort((a, b) => new Date(b.spendDate) - new Date(a.spendDate));
+
+                    transactions.value = merged;
+
+
+
+                    // Recalc Stats
+                    let total = 0;
+                    transactions.value.forEach(t => { if (!t.isOneTime && t.type === '支出') total += parseFloat(t.amountJPY); });
+                    stats.value = { monthlyLifeTotal: total, allOneTimeTotal: 0, debtTotal: 0, totalInvestment: 0 };
+
                     return;
                 }
+
 
                 // Pass token to fetch logic (Backend handles masking if invalid)
                 const data = await API.fetchInitialData(adminToken.value);
@@ -392,7 +372,7 @@ createApp({
                 // If Viewer, force switch to overview
                 if (appMode.value === 'VIEWER') currentTab.value = 'overview';
 
-            } finally { loading.value = false; }
+            } finally { if (!isSilent) loading.value = false; }
         };
 
         const processSyncQueue = async () => {
@@ -415,7 +395,10 @@ createApp({
 
             syncQueue.value = remaining;
             localStorage.setItem('sync_queue', JSON.stringify(remaining));
-            if (remaining.length === 0) syncStatus.value = 'idle';
+            if (remaining.length === 0) {
+                syncStatus.value = 'idle';
+                await loadData(true);
+            }
         };
 
         const handleSubmit = async (targetForm) => {
@@ -454,8 +437,9 @@ createApp({
                 processSyncQueue(); // Trigger background sync
             } else if (appMode.value === 'GUEST') {
                 try {
-                    // Guest mode: Save to LocalStorage
-                    localStorage.setItem('guest_data', JSON.stringify({ transactions: transactions.value }));
+                    // Guest mode: Save Only Local (Non-Remote) Data to LocalStorage
+                    const localOnly = transactions.value.filter(t => !t.isRemote);
+                    localStorage.setItem('guest_data', JSON.stringify({ transactions: localOnly }));
                 } catch (e) {
                     console.error("Guest Save Error", e);
                     alert("儲存失敗");
@@ -496,7 +480,9 @@ createApp({
                 if (!confirm("體驗模式：確定刪除？")) return;
                 // Optimistic Delete for Guest
                 transactions.value = transactions.value.filter(t => t.row !== row);
-                localStorage.setItem('guest_data', JSON.stringify({ transactions: transactions.value }));
+                // Save filtered (only local)
+                const localOnly = transactions.value.filter(t => !t.isRemote);
+                localStorage.setItem('guest_data', JSON.stringify({ transactions: localOnly }));
                 // Show Success Dialog for Guest
                 if (item) {
                     dialog.showTransactionSuccess(item, () => { currentTab.value = 'history'; editForm.value = null; }, {
@@ -565,6 +551,16 @@ createApp({
         };
 
         onMounted(loadData);
+
+        // Expose for Debugging
+        window.DEBUG_APP = {
+            transactions,
+            paymentMethods,
+            systemConfig,
+            appMode,
+            localData: () => JSON.parse(localStorage.getItem('guest_data')),
+            clear: () => { localStorage.removeItem('guest_data'); window.location.reload(); }
+        };
 
         return {
             currentTab, loading, categories, friends, paymentMethods, projects, transactions, filteredTransactions, historyFilter, form, editForm, stats, systemConfig, fxRate, selectedProject,

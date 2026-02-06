@@ -5,10 +5,10 @@ import { API } from './api.js';
 // Components
 import { HistoryPage } from './pages/history-page.js';
 import { StatsPage } from './pages/stats-page.js';
-import { SettingsPage } from './pages/settings-page.js';
+import { ViewSettingsPage } from './pages/view-settings-page.js';
 import { ViewDashboard } from './pages/view-dashboard.js';
 import { ProjectDetailPage } from './pages/project-detail-page.js';
-import { EditPage } from './pages/edit-page.js'; // Will be used in Read-Only mode
+import { ViewEditPage } from './pages/view-edit-page.js';
 
 import { SystemModal } from './components/system-modal.js';
 import { AppHeader } from './components/app-header.js';
@@ -20,10 +20,10 @@ createApp({
     components: {
         'history-page': HistoryPage,
         'stats-page': StatsPage,
-        'settings-page': SettingsPage,
+        'settings-page': ViewSettingsPage,
         'view-dashboard': ViewDashboard,
         'project-detail-page': ProjectDetailPage,
-        'edit-page': EditPage, // Reused for detailed view
+        'edit-page': ViewEditPage,
         'system-modal': SystemModal,
         'app-header': AppHeader,
         'viewer-footer': ViewerFooter
@@ -150,10 +150,10 @@ createApp({
                     .map(p => p.id);
 
                 list = list.filter(t =>
-                    (t.name && t.name.toLowerCase().includes(k)) ||
-                    (t.note && t.note.toLowerCase().includes(k)) ||
+                    (t.name && String(t.name).toLowerCase().includes(k)) ||
+                    (t.note && String(t.note).toLowerCase().includes(k)) ||
                     (t.projectId && matchingProjectIds.includes(t.projectId)) ||
-                    (t.projectId && t.projectId.toLowerCase() === k)
+                    (t.projectId && String(t.projectId).toLowerCase() === k)
                 );
             }
             return list;

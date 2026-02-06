@@ -87,9 +87,9 @@
                 @drill-down="handleDrillDown"></stats-page>
 
             <!-- Settings Page (Simplified) -->
-            <settings-page v-if="currentTab === 'settings'" :config="{}" :friends="friends" :transactions="transactions"
-                :projects="projects" :app-mode="appMode" @view-friend="handleViewFriend"
-                @view-project="handleViewProject"></settings-page>
+            <settings-page v-if="currentTab === 'settings'" :config="config" :friends="friends"
+                :transactions="transactions" :projects="projects" :app-mode="appMode" :fx-rate="fxRate"
+                @view-friend="handleViewFriend" @view-project="handleViewProject"></settings-page>
 
             <!-- Project Detail Page -->
             <project-detail-page v-if="currentTab === 'project-detail'" :project="selectedProject"

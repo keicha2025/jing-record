@@ -5,7 +5,7 @@ export const AppHeader = {
         <h1 class="text-lg font-light tracking-[0.3em] text-gray-300 uppercase">Nichi-Nichi</h1>
         <div class="flex items-center space-x-2">
             <!-- Filter Clear Button -->
-            <div v-if="currentTab === 'history' && (historyFilter.mode !== 'all' || historyFilter.friendName || historyFilter.categoryId)"
+            <div v-if="currentTab === 'history'"
                  @click="$emit('clear-filter')"
                  class="flex items-center space-x-1 text-[9px] bg-gray-100 text-gray-400 px-3 py-1.5 rounded-full cursor-pointer transition-colors hover:bg-gray-200">
                 <span class="material-symbols-rounded !text-xs">filter_list_off</span>
