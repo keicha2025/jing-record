@@ -5,17 +5,6 @@ export const StatsPage = {
     <section class="space-y-6 py-4 animate-in fade-in pb-10">
         <!-- 1. 模式切換與統計總額 -->
         <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-6">
-            <div class="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
-                <div class="flex p-0.5 space-x-1">
-                    <button @click="baseCurrency = 'JPY'" :class="baseCurrency === 'JPY' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1 text-[8px] rounded-lg transition-all uppercase font-bold">JPY</button>
-                    <button @click="baseCurrency = 'TWD'" :class="baseCurrency === 'TWD' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1 text-[8px] rounded-lg transition-all uppercase font-bold">TWD</button>
-                </div>
-                <div class="flex p-0.5 space-x-1">
-                    <button @click="isMyShareOnly = false" :class="!isMyShareOnly ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1 text-[8px] rounded-lg transition-all font-bold">總和模式</button>
-                    <button @click="isMyShareOnly = true" :class="isMyShareOnly ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1 text-[8px] rounded-lg transition-all font-bold">個人份額</button>
-                </div>
-            </div>
-
             <!-- 1. 頂部控制列 (Reordered) -->
             <div class="flex bg-gray-50 rounded-xl p-1 mb-2">
                  <button @click="filterMode = 'normal'" :class="filterMode === 'normal' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-2 text-[10px] tracking-widest rounded-lg transition-all font-medium">一般模式</button>
@@ -24,32 +13,53 @@ export const StatsPage = {
 
             <!-- 時間切換 (只在一般模式顯示) -->
             <div v-show="filterMode === 'normal'" class="flex bg-gray-50 rounded-xl p-1 mb-2">
-                <button @click="dateMode = 'month'" :class="dateMode === 'month' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1.5 text-[10px] tracking-widest rounded-lg transition-all font-medium">按月份</button>
-                <button @click="dateMode = 'range'" :class="dateMode === 'range' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1.5 text-[10px] tracking-widest rounded-lg transition-all font-medium">自訂區間</button>
+                <button @click="dateMode = 'month'" :class="dateMode === 'month' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1.5 text-[10px] tracking-widest rounded-lg transition-all font-medium">按月</button>
+                <button @click="dateMode = 'range'" :class="dateMode === 'range' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1.5 text-[10px] tracking-widest rounded-lg transition-all font-medium">自訂</button>
+                <button @click="dateMode = 'all'" :class="dateMode === 'all' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-400'" class="flex-1 py-1.5 text-[10px] tracking-widest rounded-lg transition-all font-medium">所有</button>
             </div>
 
                 <!-- 一般模式下的日期選擇與過濾 -->
                 <div v-show="filterMode === 'normal'" class="flex flex-col space-y-2">
-                   <input v-if="dateMode === 'month'" type="month" v-model="selectedMonth" class="text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none text-gray-600 border border-transparent focus:bg-white focus:border-gray-200 transition-all">
-                   <div v-else class="grid grid-cols-2 gap-3">
-                       <input type="date" v-model="startDate" class="text-[10px] bg-gray-50 px-2 py-1 rounded-lg outline-none text-gray-600">
-                       <input type="date" v-model="endDate" class="text-[10px] bg-gray-50 px-2 py-1 rounded-lg outline-none text-gray-600">
+                   <input v-if="dateMode === 'month'" type="month" v-model="selectedMonth" class="text-xs bg-gray-50 px-3 h-9 rounded-xl outline-none text-gray-600 border border-transparent focus:bg-white focus:border-gray-200 transition-all">
+                   <div v-else-if="dateMode === 'range'" class="grid grid-cols-2 gap-3">
+                       <input type="date" v-model="startDate" class="text-xs bg-gray-50 px-3 h-9 rounded-xl outline-none text-gray-600 border border-transparent focus:bg-white focus:border-gray-200 transition-all">
+                       <input type="date" v-model="endDate" class="text-xs bg-gray-50 px-3 h-9 rounded-xl outline-none text-gray-600 border border-transparent focus:bg-white focus:border-gray-200 transition-all">
                    </div>
-                   <!-- 排除專案支出選項 -->
-                   <div class="flex items-center space-x-2 px-1 pt-1">
-                       <div @click="excludeProjects = !excludeProjects" class="w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer" :class="excludeProjects ? 'bg-gray-700 border-gray-700' : 'bg-white border-gray-300'">
-                           <span v-if="excludeProjects" class="material-symbols-rounded text-white text-[10px]">check</span>
+                   
+                   <!-- 過濾選項區塊 -->
+                   <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-1 pt-1">
+                       <!-- 個人份額切換 -->
+                       <div class="flex items-center space-x-2">
+                           <div @click="isMyShareOnly = !isMyShareOnly" class="w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer" :class="isMyShareOnly ? 'bg-gray-700 border-gray-700' : 'bg-white border-gray-300'">
+                               <span v-if="isMyShareOnly" class="material-symbols-rounded text-white text-[10px]">check</span>
+                           </div>
+                           <span @click="isMyShareOnly = !isMyShareOnly" class="text-[10px] text-gray-400 cursor-pointer">僅顯示個人份額</span>
                        </div>
-                       <span @click="excludeProjects = !excludeProjects" class="text-[10px] text-gray-400 cursor-pointer">不包含專案/旅行花費</span>
+
+                       <!-- 排除專案選項 -->
+                       <div class="flex items-center space-x-2">
+                           <div @click="excludeProjects = !excludeProjects" class="w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer" :class="excludeProjects ? 'bg-gray-700 border-gray-700' : 'bg-white border-gray-300'">
+                               <span v-if="excludeProjects" class="material-symbols-rounded text-white text-[10px]">check</span>
+                           </div>
+                           <span @click="excludeProjects = !excludeProjects" class="text-[10px] text-gray-400 cursor-pointer">不包含專案/旅行花費</span>
+                       </div>
                    </div>
                 </div>
 
                 <!-- 專案模式下的專案選擇 -->
-                 <div v-show="filterMode === 'project'" class="w-full pt-1">
+                 <div v-show="filterMode === 'project'" class="w-full pt-1 space-y-3">
                     <select v-model="selectedProjectId" class="w-full text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none text-gray-600 border border-transparent focus:bg-white focus:border-gray-200 transition-all">
                         <option value="">未選取專案 (合併統計)</option>
                         <option v-for="p in activeProjects" :key="p.id" :value="p.id">{{ p.name }} ({{ getStatusLabel(p.status) }})</option>
                     </select>
+
+                    <!-- 個人份額切換 (專案模式) -->
+                    <div class="flex items-center space-x-2 px-1">
+                        <div @click="isMyShareOnly = !isMyShareOnly" class="w-4 h-4 rounded border flex items-center justify-center transition-colors cursor-pointer" :class="isMyShareOnly ? 'bg-gray-700 border-gray-700' : 'bg-white border-gray-300'">
+                            <span v-if="isMyShareOnly" class="material-symbols-rounded text-white text-[10px]">check</span>
+                        </div>
+                        <span @click="isMyShareOnly = !isMyShareOnly" class="text-[10px] text-gray-400 cursor-pointer">僅顯示個人份額</span>
+                    </div>
                 </div>
             </div>
 
@@ -147,7 +157,11 @@ export const StatsPage = {
                     return t.projectId === this.selectedProjectId;
                 } else {
                     const tDate = t.spendDate.split(' ')[0].replace(/\//g, '-');
-                    const timeMatch = (this.dateMode === 'month') ? tDate.startsWith(this.selectedMonth) : (tDate >= this.startDate && tDate <= this.endDate);
+                    let timeMatch = true;
+                    if (this.dateMode === 'month') timeMatch = tDate.startsWith(this.selectedMonth);
+                    else if (this.dateMode === 'range') timeMatch = (tDate >= this.startDate && tDate <= this.endDate);
+                    else if (this.dateMode === 'all') timeMatch = true;
+
                     if (!timeMatch) return false;
 
                     // 排除專案支出
@@ -195,9 +209,17 @@ export const StatsPage = {
                 const now = new Date();
                 const isCurrent = (now.getFullYear() === parseInt(parts[0]) && (now.getMonth() + 1) === parseInt(parts[1]));
                 days = isCurrent ? now.getDate() : new Date(parts[0], parts[1], 0).getDate();
-            } else {
+            } else if (this.dateMode === 'range') {
                 const diff = new Date(this.endDate) - new Date(this.startDate);
                 days = Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1);
+            } else if (this.dateMode === 'all') {
+                const dates = this.processedList.map(t => new Date(t.spendDate.split(' ')[0].replace(/\//g, '-')));
+                if (dates.length > 0) {
+                    const minDate = new Date(Math.min(...dates));
+                    const maxDate = new Date(Math.max(...dates));
+                    const diff = maxDate - minDate;
+                    days = Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1);
+                }
             }
             return this.totalPeriodAmount / days;
         },
@@ -302,6 +324,7 @@ export const StatsPage = {
     },
     mounted() { this.$nextTick(() => this.renderChart()); },
     watch: {
+        displayCurrency(newVal) { this.baseCurrency = newVal; },
         baseCurrency() { this.$nextTick(() => this.renderChart()); },
         isMyShareOnly() { this.$nextTick(() => this.renderChart()); },
         dateMode() { this.$nextTick(() => this.renderChart()); },
