@@ -1,6 +1,10 @@
 import { Theme } from '../theme.js';
+import { AppSelect } from '../components/app-select.js';
 
 export const StatsPage = {
+    components: {
+        'app-select': AppSelect
+    },
     template: `
     <section class="space-y-6 py-4 animate-in fade-in pb-10">
         <!-- 1. 模式切換與統計總額 -->
@@ -47,11 +51,8 @@ export const StatsPage = {
                 </div>
 
                 <!-- 專案模式下的專案選擇 -->
-                 <div v-show="filterMode === 'project'" class="w-full pt-1 space-y-3">
-                    <select v-model="selectedProjectId" class="w-full text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none text-gray-600 border border-transparent focus:bg-white focus:border-gray-200 transition-all">
-                        <option value="">未選取專案 (合併統計)</option>
-                        <option v-for="p in activeProjects" :key="p.id" :value="p.id">{{ p.name }} ({{ getStatusLabel(p.status) }})</option>
-                    </select>
+                 <div v-show="filterMode === 'project'" class="w-full pt-1 space-y-4">
+                    <app-select v-model="selectedProjectId" :options="projectSelectOptions"></app-select>
 
                     <!-- 個人份額切換 (專案模式) -->
                     <div class="flex items-center space-x-2 px-1">
@@ -146,6 +147,18 @@ export const StatsPage = {
     computed: {
         getCurrencySymbol() { return this.baseCurrency === 'JPY' ? '¥' : '$'; },
         activeProjects() { return (this.projects || []).filter(p => true); }, // 顯示所有專案供分析
+        projectSelectOptions() {
+            const options = [
+                { label: '未選取專案 (合併統計)', value: '' }
+            ];
+            this.activeProjects.forEach(p => {
+                options.push({
+                    label: `${p.name} (${this.getStatusLabel(p.status)})`,
+                    value: p.id
+                });
+            });
+            return options;
+        },
         filteredList() {
             return this.transactions.filter(t => {
                 if (t.type !== '支出') return false;
